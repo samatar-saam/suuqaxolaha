@@ -1,0 +1,69 @@
+@import "tailwindcss";
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+@keyframes text-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-text-marquee {
+  width: max-content;
+  animation: text-marquee 18s linear infinite;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(168, 85, 247, 0.45);
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+@keyframes text-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-text-marquee {
+  width: max-content;
+  animation: text-marquee 20s linear infinite;
+}
+
+@media (max-width: 640px) {
+  .animate-text-marquee {
+    animation-duration: 14s;
+  }
+}
