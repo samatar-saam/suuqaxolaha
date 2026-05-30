@@ -9,15 +9,17 @@ import {
   ChevronUp,
   Eye,
   Calendar,
-  MapPin,
   CreditCard,
   Truck,
   CheckCircle,
   Clock,
   XCircle,
   ShoppingBag,
-  Download,
   RefreshCw,
+  Star,
+  MessageSquare,
+  X,
+  MapPin,
 } from "lucide-react";
 
 export default function MyOrders() {
@@ -28,14 +30,20 @@ export default function MyOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [existingReviews, setExistingReviews] = useState([]);
 
+  // Get current user from localStorage
   useEffect(() => {
-    // Get current user from localStorage
     const userData = localStorage.getItem("user");
     if (userData) {
       const user = JSON.parse(userData);
       setCurrentUser(user);
       fetchUserOrders(user);
+      fetchUserReviews(user);
     } else {
       setLoading(false);
     }
@@ -47,21 +55,30 @@ export default function MyOrders() {
       const response = await fetch("http://localhost:5000/orders");
       const allOrders = await response.json();
       
-      // Filter orders for current user
       const userOrders = allOrders.filter(order => 
-        order.userId === user.id || 
-        order.userEmail === user.email ||
-        order.customerEmail === user.email
+        order.customerEmail?.toLowerCase() === user.email?.toLowerCase() ||
+        order.userId === user.id
       );
       
-      // Sort by date (newest first)
       userOrders.sort((a, b) => new Date(b.createdAt || b.orderDate) - new Date(a.createdAt || a.orderDate));
-      
       setOrders(userOrders);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserReviews = async (user) => {
+    try {
+      const response = await fetch("http://localhost:5000/reviews");
+      const allReviews = await response.json();
+      const userReviews = allReviews.filter(review => 
+        review.userEmail === user.email || review.userId === user.id
+      );
+      setExistingReviews(userReviews);
+    } catch (error) {
+      console.error("Failed to fetch reviews:", error);
     }
   };
 
@@ -88,18 +105,15 @@ export default function MyOrders() {
 
   const filteredOrders = useMemo(() => {
     let filtered = orders;
-    
     if (searchTerm) {
       filtered = filtered.filter(order =>
-        order.id?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.trackingNumber?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
     if (statusFilter !== "all") {
       filtered = filtered.filter(order => order.status?.toLowerCase() === statusFilter.toLowerCase());
     }
-    
     return filtered;
   }, [orders, searchTerm, statusFilter]);
 
@@ -114,7 +128,86 @@ export default function MyOrders() {
   const handleRefresh = () => {
     if (currentUser) {
       fetchUserOrders(currentUser);
+      fetchUserReviews(currentUser);
     }
+  };
+
+  const hasUserReviewed = (productId) => {
+    return existingReviews.some(review => review.productId === productId);
+  };
+
+  const getUnreviewedProducts = (order) => {
+    if (!order.items) return [];
+    return order.items.filter(item => !hasUserReviewed(item.id));
+  };
+
+  const openReviewModal = (product) => {
+    setSelectedProduct(product);
+    setReviewRating(5);
+    setReviewComment("");
+    setShowReviewModal(true);
+  };
+
+  const submitReview = async () => {
+    if (!reviewComment.trim()) {
+      alert("Please enter a review comment.");
+      return;
+    }
+
+    const reviewData = {
+      id: `rev_${Date.now()}`,
+      productId: selectedProduct.id,
+      productName: selectedProduct.name,
+      userId: currentUser.id,
+      userEmail: currentUser.email,
+      userName: `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim() || currentUser.email,
+      rating: reviewRating,
+      comment: reviewComment,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const response = await fetch("http://localhost:5000/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reviewData),
+      });
+      
+      if (response.ok) {
+        alert("Review submitted! It will appear after admin approval.");
+        setShowReviewModal(false);
+        fetchUserReviews(currentUser);
+      } else {
+        throw new Error("Failed to submit review");
+      }
+    } catch (error) {
+      console.error("Failed to submit review:", error);
+      alert("Failed to submit review. Please try again.");
+    }
+  };
+
+  const getRatingStars = (rating, size = 16) => {
+    return (
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            size={size}
+            className={star <= rating ? "fill-yellow-400 text-yellow-400" : "text-slate-300"}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   if (loading) {
@@ -135,7 +228,7 @@ export default function MyOrders() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">My Orders</h1>
-            <p className="text-sm text-slate-500 mt-1">Track and manage all your orders in one place</p>
+            <p className="text-sm text-slate-500 mt-1">Track, manage, and review your orders</p>
           </div>
           <button
             onClick={handleRefresh}
@@ -156,7 +249,7 @@ export default function MyOrders() {
         <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} color="text-red-600" bg="bg-red-50" />
       </div>
 
-      {/* Search and Filters */}
+      {/* Search & Filters */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
@@ -169,7 +262,6 @@ export default function MyOrders() {
               className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-purple-400"
             />
           </div>
-
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-purple-50"
@@ -178,7 +270,6 @@ export default function MyOrders() {
             Filters
             {showFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-
           {showFilters && (
             <select
               value={statusFilter}
@@ -228,96 +319,92 @@ export default function MyOrders() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredOrders.map((order) => (
-            <div key={order.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
-              {/* Order Header */}
-              <div className="flex flex-wrap items-center justify-between gap-4 p-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
-                <div className="flex items-center gap-4">
-                  {getStatusIcon(order.status)}
-                  <div>
-                    <p className="text-sm text-slate-500">Order #{order.id}</p>
-                    <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                      <Calendar size={12} />
-                      {new Date(order.createdAt || order.orderDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(order.status)}`}>
-                    {order.status || "Pending"}
-                  </span>
-                  <button
-                    onClick={() => setSelectedOrder(order)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-purple-50 hover:text-purple-600 transition"
-                  >
-                    <Eye size={14} />
-                    View Details
-                  </button>
-                </div>
-              </div>
-
-              {/* Order Body */}
-              <div className="p-5">
-                <div className="flex flex-col sm:flex-row justify-between gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <CreditCard size={14} className="text-purple-500" />
-                      <span className="text-slate-600">Total Amount:</span>
-                      <span className="font-bold text-purple-600">KSh {order.total?.toLocaleString() || 0}</span>
-                    </div>
-                    {order.trackingNumber && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Truck size={14} className="text-purple-500" />
-                        <span className="text-slate-600">Tracking:</span>
-                        <span className="font-mono text-sm">{order.trackingNumber}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {order.status?.toLowerCase() === "shipped" && order.trackingNumber && (
-                      <button className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-purple-50">
-                        <Truck size={14} />
-                        Track Order
-                      </button>
-                    )}
-                    {order.status?.toLowerCase() === "delivered" && (
-                      <button className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-purple-50">
-                        <Download size={14} />
-                        Download Invoice
-                      </button>
-                    )}
-                    <Link
-                      to={`/dashboard/track-order`}
-                      state={{ orderId: order.id }}
-                      className="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700"
-                    >
-                      Track Order
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Order Items Preview */}
-                {order.items && order.items.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-100">
-                    <p className="text-xs font-medium text-slate-500 mb-2">Items:</p>
-                    <div className="flex flex-wrap gap-3">
-                      {order.items.slice(0, 3).map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <span className="text-slate-700">{item.name || `Item ${idx + 1}`}</span>
-                          <span className="text-slate-400">x{item.quantity || 1}</span>
-                        </div>
-                      ))}
-                      {order.items.length > 3 && (
-                        <span className="text-sm text-purple-600">+{order.items.length - 3} more</span>
+          {filteredOrders.map((order) => {
+            const unreviewedProducts = getUnreviewedProducts(order);
+            const hasUnreviewedProducts = unreviewedProducts.length > 0;
+            
+            return (
+              <div key={order.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                <div className="flex flex-wrap items-center justify-between gap-4 p-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+                  <div className="flex items-center gap-4">
+                    {getStatusIcon(order.status)}
+                    <div>
+                      <p className="text-sm text-slate-500">Order #{order.id}</p>
+                      <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                        <Calendar size={12} />
+                        {formatDate(order.createdAt || order.orderDate)}
+                      </p>
+                      {order.trackingNumber && (
+                        <p className="text-xs text-purple-600 font-mono mt-0.5">Tracking: {order.trackingNumber}</p>
                       )}
                     </div>
                   </div>
-                )}
+                  <div className="flex items-center gap-3">
+                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(order.status)}`}>
+                      {order.status || "Pending"}
+                    </span>
+                    <button
+                      onClick={() => setSelectedOrder(order)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-purple-50 hover:text-purple-600 transition"
+                    >
+                      <Eye size={14} />
+                      View Details
+                    </button>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <div className="flex flex-col sm:flex-row justify-between gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <CreditCard size={14} className="text-purple-500" />
+                        <span className="text-slate-600">Total:</span>
+                        <span className="font-bold text-purple-600">KSh {order.total?.toLocaleString() || 0}</span>
+                      </div>
+                      {order.items && order.items.length > 0 && (
+                        <div className="flex flex-wrap gap-2 text-sm">
+                          <span className="text-slate-500">Items:</span>
+                          {order.items.slice(0, 2).map((item, idx) => (
+                            <span key={idx} className="text-slate-700">{item.quantity}×{item.name}</span>
+                          ))}
+                          {order.items.length > 2 && <span className="text-purple-600">+{order.items.length-2} more</span>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Link
+                        to="/dashboard/track-order"
+                        state={{ orderId: order.id }}
+                        className="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700"
+                      >
+                        Track Order
+                      </Link>
+                      
+                      {/* Write Review Button - Visible on Delivered orders with unreviewed products */}
+                      {order.status?.toLowerCase() === "delivered" && hasUnreviewedProducts && (
+                        <button
+                          onClick={() => openReviewModal(unreviewedProducts[0])}
+                          className="inline-flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-100 transition"
+                        >
+                          <Star size={14} />
+                          Write a Review ({unreviewedProducts.length})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Review Reminder Banner */}
+                  {order.status?.toLowerCase() === "delivered" && hasUnreviewedProducts && (
+                    <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                      <p className="text-sm text-purple-700">
+                        🎉 You have {unreviewedProducts.length} product{unreviewedProducts.length !== 1 ? 's' : ''} to review! 
+                        Share your experience to help other shoppers.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-
-          {/* Results Count */}
+            );
+          })}
           <div className="text-center text-sm text-slate-500 py-4">
             Showing {filteredOrders.length} of {orders.length} orders
           </div>
@@ -327,8 +414,8 @@ export default function MyOrders() {
       {/* Order Details Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSelectedOrder(null)}>
-          <div className="relative max-w-2xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <button type="button" onClick={() => setSelectedOrder(null)} className="absolute right-4 top-4 z-10 rounded-full bg-white p-2 shadow-lg">
+          <div className="relative max-w-3xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setSelectedOrder(null)} className="absolute right-4 top-4 z-10 rounded-full bg-white p-2 shadow-lg hover:bg-slate-100 transition">
               <X size={20} />
             </button>
 
@@ -342,115 +429,166 @@ export default function MyOrders() {
 
             <div className="px-6 pt-12 pb-6">
               <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-slate-900">Order #{selectedOrder.id}</h2>
-                <div className="mt-2 flex justify-center gap-2">
-                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(selectedOrder.status)}`}>
+                <h2 className="text-2xl font-bold text-slate-900">Order Details</h2>
+                <p className="text-sm text-slate-500 mt-1">Order ID: {selectedOrder.id}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl mb-4">
+                <div>
+                  <p className="text-xs text-slate-500">Order Date</p>
+                  <p className="text-sm font-medium text-slate-900">{formatDate(selectedOrder.createdAt || selectedOrder.orderDate)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Status</p>
+                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${getStatusBadge(selectedOrder.status)}`}>
                     {selectedOrder.status || "Pending"}
                   </span>
                 </div>
-              </div>
-
-              {/* Order Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl mb-4">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar size={14} className="text-purple-500" />
-                  <span className="text-slate-600">Order Date:</span>
-                  <span className="text-slate-900 font-medium">
-                    {new Date(selectedOrder.createdAt || selectedOrder.orderDate).toLocaleDateString()}
-                  </span>
+                <div>
+                  <p className="text-xs text-slate-500">Total Amount</p>
+                  <p className="text-xl font-bold text-purple-600">KSh {selectedOrder.total?.toLocaleString() || 0}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Payment Method</p>
+                  <p className="text-sm text-slate-900 capitalize">{selectedOrder.paymentMethod || "M-PESA"}</p>
                 </div>
                 {selectedOrder.trackingNumber && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Truck size={14} className="text-purple-500" />
-                    <span className="text-slate-600">Tracking Number:</span>
-                    <span className="text-slate-900 font-mono text-sm">{selectedOrder.trackingNumber}</span>
+                  <div>
+                    <p className="text-xs text-slate-500">Tracking Number</p>
+                    <p className="text-sm font-mono text-purple-600">{selectedOrder.trackingNumber}</p>
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-sm">
-                  <CreditCard size={14} className="text-purple-500" />
-                  <span className="text-slate-600">Payment Method:</span>
-                  <span className="text-slate-900">{selectedOrder.paymentMethod || "M-PESA"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <MapPin size={14} className="text-purple-500" />
-                  <span className="text-slate-600">Delivery:</span>
-                  <span className="text-slate-900">
-                    {selectedOrder.shippingAddress ? `${selectedOrder.shippingAddress.city}` : "Standard Delivery"}
-                  </span>
-                </div>
               </div>
 
-              {/* Order Items */}
+              {/* Order Items with Review Buttons */}
               {selectedOrder.items && selectedOrder.items.length > 0 && (
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold text-slate-900 mb-3">Order Items</h3>
                   <div className="space-y-3">
-                    {selectedOrder.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          {item.image && (
-                            <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover" />
-                          )}
-                          <div>
-                            <p className="font-medium text-slate-900">{item.name || `Product ${idx + 1}`}</p>
-                            <p className="text-sm text-slate-500">Quantity: {item.quantity || 1}</p>
+                    {selectedOrder.items.map((item, idx) => {
+                      const isReviewed = hasUserReviewed(item.id);
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                          <div className="flex items-center gap-3">
+                            <img src={item.image || "https://via.placeholder.com/48"} alt={item.name} className="w-12 h-12 rounded-lg object-cover" />
+                            <div>
+                              <p className="font-medium text-slate-900">{item.name}</p>
+                              <p className="text-sm text-slate-500">Quantity: {item.quantity}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-purple-600">KSh {(item.price * item.quantity).toLocaleString()}</p>
+                            {selectedOrder.status?.toLowerCase() === "delivered" && !isReviewed && (
+                              <button
+                                onClick={() => openReviewModal(item)}
+                                className="mt-1 text-xs text-purple-600 hover:text-purple-700 font-medium"
+                              >
+                                Write a Review →
+                              </button>
+                            )}
+                            {isReviewed && (
+                              <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                                <CheckCircle size={12} />
+                                Reviewed
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <p className="font-bold text-purple-600">KSh {((item.price || 0) * (item.quantity || 1)).toLocaleString()}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* Order Summary */}
-              <div className="border-t border-slate-200 pt-4">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-600">Subtotal</span>
-                  <span className="text-slate-900">KSh {selectedOrder.subtotal?.toLocaleString() || selectedOrder.total?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-600">Delivery Fee</span>
-                  <span className="text-slate-900">KSh {selectedOrder.deliveryFee || 250}</span>
-                </div>
-                {selectedOrder.discount > 0 && (
-                  <div className="flex justify-between text-sm mb-2 text-green-600">
-                    <span>Discount</span>
-                    <span>- KSh {selectedOrder.discount.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-lg font-bold pt-2 border-t border-slate-200 mt-2">
-                  <span className="text-slate-900">Total</span>
-                  <span className="text-purple-600">KSh {selectedOrder.total?.toLocaleString() || 0}</span>
-                </div>
-              </div>
-
               {/* Shipping Address */}
               {selectedOrder.shippingAddress && (
-                <div className="mt-4 p-4 bg-purple-50 rounded-xl">
-                  <h4 className="text-sm font-semibold text-purple-700 mb-2">Shipping Address</h4>
+                <div className="mb-4 p-4 bg-purple-50 rounded-xl">
+                  <h4 className="text-sm font-semibold text-purple-700 mb-2 flex items-center gap-2">
+                    <MapPin size={14} />
+                    Shipping Address
+                  </h4>
                   <p className="text-sm text-slate-600">{selectedOrder.shippingAddress.street}</p>
                   <p className="text-sm text-slate-600">{selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.postalCode}</p>
                   <p className="text-sm text-slate-600">{selectedOrder.shippingAddress.country}</p>
                 </div>
               )}
 
-              <div className="flex gap-3 mt-6">
-                <Link
-                  to={`/dashboard/track-order`}
-                  state={{ orderId: selectedOrder.id }}
-                  className="flex-1 rounded-xl bg-purple-600 py-2.5 font-semibold text-white hover:bg-purple-700 transition text-center"
-                  onClick={() => setSelectedOrder(null)}
-                >
-                  Track Order
-                </Link>
+              <div className="flex gap-3">
                 <button
-                  type="button"
                   onClick={() => setSelectedOrder(null)}
-                  className="flex-1 rounded-xl border border-slate-200 py-2.5 font-semibold text-slate-600 hover:bg-slate-50 transition"
+                  className="flex-1 rounded-xl bg-purple-600 py-2.5 font-semibold text-white hover:bg-purple-700 transition"
                 >
                   Close
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Write Review Modal */}
+      {showReviewModal && selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowReviewModal(false)}>
+          <div className="relative max-w-md w-full bg-white rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowReviewModal(false)} className="absolute right-4 top-4 z-10 rounded-full bg-white p-2 shadow-lg hover:bg-slate-100 transition">
+              <X size={20} />
+            </button>
+
+            <div className="p-6">
+              <div className="text-center mb-4">
+                <img
+                  src={selectedProduct.image || "https://via.placeholder.com/64"}
+                  alt={selectedProduct.name}
+                  className="w-16 h-16 rounded-xl object-cover mx-auto mb-2"
+                />
+                <h3 className="text-lg font-bold text-slate-900">Write a Review</h3>
+                <p className="text-sm text-slate-500 mt-1">{selectedProduct.name}</p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Your Rating</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setReviewRating(star)}
+                        className="focus:outline-none"
+                      >
+                        <Star
+                          size={32}
+                          className={star <= reviewRating ? "fill-yellow-400 text-yellow-400" : "text-slate-300"}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Your Review</label>
+                  <textarea
+                    rows={4}
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Share your experience with this product..."
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400 resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowReviewModal(false)}
+                    className="flex-1 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitReview}
+                    className="flex-1 rounded-lg bg-purple-600 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+                  >
+                    Submit Review
+                  </button>
+                </div>
               </div>
             </div>
           </div>

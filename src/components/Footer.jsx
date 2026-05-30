@@ -1,7 +1,6 @@
 // src/components/Footer.jsx
 import { Link } from "react-router-dom";
 import {
- 
   Mail,
   Phone,
   MapPin,
@@ -14,7 +13,7 @@ import {
   Heart,
 } from "lucide-react";
 
-export default function Footer() {  // Make sure this is here
+export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   const categories = [
@@ -31,28 +30,13 @@ export default function Footer() {  // Make sure this is here
   const quickLinks = [
     { name: "About Us", link: "/about" },
     { name: "Contact Us", link: "/contact" },
-    { name: "FAQs", link: "/faqs" },
-    { name: "Privacy Policy", link: "/privacy" },
-    { name: "Terms & Conditions", link: "/terms" },
-    { name: "Return Policy", link: "/returns" },
-    { name: "Shipping Info", link: "/shipping" },
-    { name: "Track Order", link: "/track-order" },
+    { name: "FAQs", link: "/dashboard/support" },
+    { name: "Privacy Policy", link: "/privacy-policy" },
+    { name: "Terms & Conditions", link: "/terms-conditions" },
+    { name: "Return Policy", link: "/return-policy" },
+    { name: "Shipping Info", link: "/shipping-info" },
+    { name: "Track Order", link: "/dashboard/track-order" },
   ];
-
-  const sellerLinks = [
-    { name: "Become a Seller", link: "/seller/register" },
-    { name: "Seller Dashboard", link: "/seller/dashboard" },
-    { name: "Seller Guidelines", link: "/seller/guidelines" },
-    { name: "Pricing & Fees", link: "/seller/pricing" },
-    { name: "Seller Support", link: "/seller/support" },
-  ];
-
-//   const socialLinks = [
-//     { name: "Facebook", icon: Facebook, link: "https://facebook.com", color: "hover:bg-[#1877F2]" },
-//     { name: "Twitter", icon: Twitter, link: "https://twitter.com", color: "hover:bg-[#1DA1F2]" },
-//     { name: "Instagram", icon: Instagram, link: "https://instagram.com", color: "hover:bg-[#E4405F]" },
-//     { name: "YouTube", icon: Youtube, link: "https://youtube.com", color: "hover:bg-[#FF0000]" },
-//   ];
 
   const paymentMethods = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/M-PESA_Logo.svg/2560px-M-PESA_Logo.svg.png",
@@ -84,25 +68,6 @@ export default function Footer() {  // Make sure this is here
             <p className="text-slate-400 text-sm leading-relaxed">
               Shop Local. Empower Business. — SuuqHub connects you with trusted local vendors across Kenya.
             </p>
-
-            {/* Social Links */}
-            {/* <div className="flex gap-3 pt-2">
-              {socialLinks.map((social) => {
-                const Icon = social.icon;
-                return (
-                  <a
-                    key={social.name}
-                    href={social.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`rounded-full bg-slate-800 p-2.5 text-slate-400 transition-all duration-300 hover:text-white ${social.color}`}
-                    aria-label={social.name}
-                  >
-                    <Icon size={18} />
-                  </a>
-                );
-              })}
-            </div> */}
 
             {/* Contact Info */}
             <div className="space-y-2 pt-2">
@@ -167,24 +132,49 @@ export default function Footer() {  // Make sure this is here
             </ul>
           </div>
 
-          {/* For Sellers */}
+          {/* Customer Service */}
           <div>
             <h3 className="text-lg font-bold mb-4 relative inline-block">
-              For Sellers
+              Customer Service
               <span className="absolute -bottom-1 left-0 h-0.5 w-8 bg-purple-500 rounded-full"></span>
             </h3>
             <ul className="space-y-2">
-              {sellerLinks.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    to={link.link}
-                    className="text-slate-400 hover:text-purple-400 transition-colors duration-300 text-sm flex items-center gap-2 group"
-                  >
-                    <span className="w-0 group-hover:w-2 h-0.5 bg-purple-500 transition-all duration-300"></span>
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
+              <li>
+                <Link
+                  to="/dashboard/support"
+                  className="text-slate-400 hover:text-purple-400 transition-colors duration-300 text-sm flex items-center gap-2 group"
+                >
+                  <span className="w-0 group-hover:w-2 h-0.5 bg-purple-500 transition-all duration-300"></span>
+                  Help Center
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/return-policy"
+                  className="text-slate-400 hover:text-purple-400 transition-colors duration-300 text-sm flex items-center gap-2 group"
+                >
+                  <span className="w-0 group-hover:w-2 h-0.5 bg-purple-500 transition-all duration-300"></span>
+                  Returns & Refunds
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/shipping-info"
+                  className="text-slate-400 hover:text-purple-400 transition-colors duration-300 text-sm flex items-center gap-2 group"
+                >
+                  <span className="w-0 group-hover:w-2 h-0.5 bg-purple-500 transition-all duration-300"></span>
+                  Delivery Information
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/dashboard/orders"
+                  className="text-slate-400 hover:text-purple-400 transition-colors duration-300 text-sm flex items-center gap-2 group"
+                >
+                  <span className="w-0 group-hover:w-2 h-0.5 bg-purple-500 transition-all duration-300"></span>
+                  My Orders
+                </Link>
+              </li>
             </ul>
 
             {/* Trust Badges */}
@@ -240,8 +230,8 @@ export default function Footer() {  // Make sure this is here
               © {currentYear} SuuqHub. All rights reserved. Shop Local. Empower Business.
             </p>
             <div className="flex gap-4 text-xs text-slate-500">
-              <Link to="/privacy" className="hover:text-purple-400 transition">Privacy</Link>
-              <Link to="/terms" className="hover:text-purple-400 transition">Terms</Link>
+              <Link to="/privacy-policy" className="hover:text-purple-400 transition">Privacy Policy</Link>
+              <Link to="/terms-conditions" className="hover:text-purple-400 transition">Terms</Link>
               <Link to="/sitemap" className="hover:text-purple-400 transition">Sitemap</Link>
             </div>
           </div>

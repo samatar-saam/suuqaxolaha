@@ -18,6 +18,7 @@ import {
   Star,
   Truck,
   ShieldCheck,
+  Ticket, // Add Ticket icon
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import DashboardOverview from "../pages/DashboardOverview";
@@ -25,9 +26,10 @@ import TrackOrder from "../pages/TrackOrder";
 import MyOrders from "../pages/MyOrders";
 import UserProfile from "../pages/UserProfile";
 import UserWishlist from "../pages/UserWishlist";
-import UserReviews from "../pages/UserReviews";
+import MyReviews from "../pages/MyReviews";
 import OrderReport from "../pages/ReportIssue";
 import UserSupport from "../pages/UserSupport";
+import UserTickets from "../pages/UserTickets"; // Import UserTickets component
 
 function UserDashboard() {
   const navigate = useNavigate();
@@ -70,6 +72,7 @@ function UserDashboard() {
     { name: "Profile", path: "/dashboard/profile", icon: User },
     { name: "Order Report", path: "/dashboard/report", icon: FileText },
     { name: "Support", path: "/dashboard/support", icon: LifeBuoy },
+    { name: "My Tickets", path: "/dashboard/tickets", icon: Ticket }, // Add My Tickets nav item
   ];
 
   const handleLogout = () => {
@@ -88,6 +91,7 @@ function UserDashboard() {
     if (location.pathname.includes("/profile")) return "Profile Settings";
     if (location.pathname.includes("/report")) return "Order Report";
     if (location.pathname.includes("/support")) return "Customer Support";
+    if (location.pathname.includes("/tickets")) return "My Support Tickets";
     return "User Dashboard";
   }, [location.pathname]);
 
@@ -260,10 +264,11 @@ function UserDashboard() {
               <Route path="orders" element={<MyOrders />} />
               <Route path="wishlist" element={<UserWishlist />} />
               <Route path="track-order" element={<TrackOrder />} />
-              <Route path="reviews" element={<UserReviews />} />
+              <Route path="reviews" element={<MyReviews />} />
               <Route path="profile" element={<UserProfile />} />
               <Route path="report" element={<OrderReport />} />
               <Route path="support" element={<UserSupport />} />
+              <Route path="tickets" element={<UserTickets />} /> {/* Add tickets route */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </main>

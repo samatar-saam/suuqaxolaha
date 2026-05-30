@@ -1,3 +1,4 @@
+// src/admin/pages/Categories.jsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Plus,
@@ -25,7 +26,7 @@ export default function Categories() {
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [formOpen, setFormOpen] = useState(false);
+  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const [productFormOpen, setProductFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -102,7 +103,7 @@ export default function Categories() {
       sortOrder: 1,
     });
     setEditingCategory(null);
-    setFormOpen(false);
+    setCategoryFormOpen(false);
   };
 
   const resetProductForm = () => {
@@ -208,6 +209,18 @@ export default function Categories() {
   const totalProducts = products.length;
   const activeProducts = products.filter((p) => p.status === "active").length;
 
+  const openEditCategoryModal = (category) => {
+    setCategoryFormData(category);
+    setEditingCategory(category);
+    setCategoryFormOpen(true);
+  };
+
+  const openEditProductModal = (product) => {
+    setProductFormData(product);
+    setEditingProduct(product);
+    setProductFormOpen(true);
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-7xl">
@@ -229,7 +242,7 @@ export default function Categories() {
               onClick={() => {
                 setActiveTab("categories");
                 resetCategoryForm();
-                setFormOpen(true);
+                setCategoryFormOpen(true);
               }}
               className="flex items-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-purple-700"
             >
@@ -290,40 +303,13 @@ export default function Categories() {
           </div>
         )}
 
-        {/* Category Form Modal */}
-        {formOpen && activeTab === "categories" && (
-          <CategoryForm
-            categoryFormData={categoryFormData}
-            editingCategory={editingCategory}
-            handleCategoryNameChange={handleCategoryNameChange}
-            setCategoryFormData={setCategoryFormData}
-            handleCategorySubmit={handleCategorySubmit}
-            resetCategoryForm={resetCategoryForm}
-          />
-        )}
-
-        {/* Product Form Modal */}
-        {productFormOpen && activeTab === "products" && (
-          <ProductForm
-            productFormData={productFormData}
-            editingProduct={editingProduct}
-            setProductFormData={setProductFormData}
-            handleProductSubmit={handleProductSubmit}
-            resetProductForm={resetProductForm}
-            categories={categories}
-          />
-        )}
-
         {/* Categories List */}
         {activeTab === "categories" && (
           <CategoriesList
             filteredCategories={filteredCategories}
             loading={loading}
-            handleEdit={setEditingCategory}
             handleDelete={handleDeleteCategory}
-            setCategoryFormData={setCategoryFormData}
-            setFormOpen={setFormOpen}
-            setEditingCategory={setEditingCategory}
+            onEdit={openEditCategoryModal}
           />
         )}
 
@@ -332,15 +318,288 @@ export default function Categories() {
           <ProductsList
             products={products}
             loading={loading}
-            handleEdit={setEditingProduct}
             handleDelete={handleDeleteProduct}
-            setProductFormData={setProductFormData}
-            setProductFormOpen={setProductFormOpen}
-            setEditingProduct={setEditingProduct}
-            categories={categories}
+            onEdit={openEditProductModal}
+            onAdd={() => setProductFormOpen(true)}
           />
         )}
       </div>
+
+      {/* Category Form Modal */}
+      {categoryFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setCategoryFormOpen(false)}>
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  {editingCategory ? "Edit Category" : "Add New Category"}
+                </h2>
+                <p className="text-sm text-slate-500">Fill in the category details below</p>
+              </div>
+              <button onClick={() => setCategoryFormOpen(false)} className="rounded-lg p-1 hover:bg-slate-100">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCategorySubmit} className="p-6">
+              <div className="grid gap-5 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Category Name *</label>
+                  <input
+                    type="text"
+                    value={categoryFormData.name}
+                    onChange={(e) => handleCategoryNameChange(e.target.value)}
+                    placeholder="e.g., Electronics"
+                    required
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Slug</label>
+                  <input
+                    type="text"
+                    value={categoryFormData.slug}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, slug: createSlug(e.target.value) })}
+                    placeholder="electronics"
+                    required
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Icon Name</label>
+                  <input
+                    type="text"
+                    value={categoryFormData.icon}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
+                    placeholder="Smartphone"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Sort Order</label>
+                  <input
+                    type="number"
+                    value={categoryFormData.sortOrder}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, sortOrder: e.target.value })}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Image URL</label>
+                  <input
+                    type="url"
+                    value={categoryFormData.image}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, image: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Description</label>
+                  <textarea
+                    rows={3}
+                    value={categoryFormData.description}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
+                    placeholder="Category description..."
+                    className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Status</label>
+                  <select
+                    value={categoryFormData.status}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, status: e.target.value })}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+
+                <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={categoryFormData.featured}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, featured: e.target.checked })}
+                    className="h-4 w-4 rounded border-slate-300 text-purple-600"
+                  />
+                  <span className="text-sm font-medium text-slate-700">Feature this category</span>
+                </label>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-6">
+                <button
+                  type="button"
+                  onClick={() => setCategoryFormOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+                >
+                  <Save size={16} />
+                  {editingCategory ? "Update Category" : "Add Category"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Product Form Modal */}
+      {productFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setProductFormOpen(false)}>
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  {editingProduct ? "Edit Product" : "Add New Product"}
+                </h2>
+                <p className="text-sm text-slate-500">Fill in the product details below</p>
+              </div>
+              <button onClick={() => setProductFormOpen(false)} className="rounded-lg p-1 hover:bg-slate-100">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleProductSubmit} className="p-6">
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Product Name *</label>
+                  <input
+                    type="text"
+                    value={productFormData.name}
+                    onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
+                    placeholder="Wireless Headphones"
+                    required
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Category *</label>
+                  <select
+                    value={productFormData.category}
+                    onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
+                    required
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  >
+                    <option value="">Select Category</option>
+                    {categories.filter(c => c.status === "active").map((cat) => (
+                      <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Subcategory</label>
+                  <input
+                    type="text"
+                    value={productFormData.subcategory}
+                    onChange={(e) => setProductFormData({ ...productFormData, subcategory: e.target.value })}
+                    placeholder="Electronics Accessories"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Price (KSh) *</label>
+                  <input
+                    type="number"
+                    value={productFormData.price}
+                    onChange={(e) => setProductFormData({ ...productFormData, price: e.target.value })}
+                    placeholder="4999"
+                    required
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Old Price (Optional)</label>
+                  <input
+                    type="number"
+                    value={productFormData.oldPrice}
+                    onChange={(e) => setProductFormData({ ...productFormData, oldPrice: e.target.value })}
+                    placeholder="6499"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Stock Quantity *</label>
+                  <input
+                    type="number"
+                    value={productFormData.stock}
+                    onChange={(e) => setProductFormData({ ...productFormData, stock: e.target.value })}
+                    placeholder="100"
+                    required
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Image URL</label>
+                  <input
+                    type="url"
+                    value={productFormData.image}
+                    onChange={(e) => setProductFormData({ ...productFormData, image: e.target.value })}
+                    placeholder="https://example.com/product-image.jpg"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Description</label>
+                  <textarea
+                    rows={3}
+                    value={productFormData.description}
+                    onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })}
+                    placeholder="Product description..."
+                    className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">Status</label>
+                  <select
+                    value={productFormData.status}
+                    onChange={(e) => setProductFormData({ ...productFormData, status: e.target.value })}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-purple-400"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-6">
+                <button
+                  type="button"
+                  onClick={() => setProductFormOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+                >
+                  <Save size={16} />
+                  {editingProduct ? "Update Product" : "Add Product"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -361,142 +620,7 @@ function StatCard({ label, value, icon: Icon, color }) {
   );
 }
 
-function CategoryForm({ categoryFormData, editingCategory, handleCategoryNameChange, setCategoryFormData, handleCategorySubmit, resetCategoryForm }) {
-  return (
-    <section className="mb-8 overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-        <div>
-          <h2 className="text-2xl font-black text-slate-950">
-            {editingCategory ? "Edit Category" : "Create New Category"}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">This category will appear on the customer categories page.</p>
-        </div>
-        <button onClick={resetCategoryForm} className="rounded-2xl p-3 text-slate-500 hover:bg-slate-100">
-          <X size={22} />
-        </button>
-      </div>
-
-      <form onSubmit={handleCategorySubmit} className="grid gap-6 p-6 lg:grid-cols-[1fr_320px]">
-        <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-black text-slate-700">Category Name</label>
-            <input type="text" placeholder="Electronics" value={categoryFormData.name} onChange={(e) => handleCategoryNameChange(e.target.value)} required className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-black text-slate-700">Slug</label>
-            <input type="text" placeholder="electronics" value={categoryFormData.slug} onChange={(e) => setCategoryFormData({ ...categoryFormData, slug: createSlug(e.target.value) })} required className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500" />
-          </div>
-          {/* Add other category fields */}
-        </div>
-        <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-5">
-          <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-sm font-bold text-white hover:bg-purple-700">
-            <Save size={18} />
-            {editingCategory ? "Update Category" : "Save Category"}
-          </button>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function ProductForm({ productFormData, editingProduct, setProductFormData, handleProductSubmit, resetProductForm, categories }) {
-  return (
-    <section className="mb-8 overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-        <div>
-          <h2 className="text-2xl font-black text-slate-950">
-            {editingProduct ? "Edit Product" : "Add New Product"}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">Products will appear in the customer categories page.</p>
-        </div>
-        <button onClick={resetProductForm} className="rounded-2xl p-3 text-slate-500 hover:bg-slate-100">
-          <X size={22} />
-        </button>
-      </div>
-
-      <form onSubmit={handleProductSubmit} className="grid gap-6 p-6 lg:grid-cols-[1fr_320px]">
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-black text-slate-700">Product Name</label>
-            <input type="text" placeholder="Wireless Headphones" value={productFormData.name} onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })} required className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500" />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-black text-slate-700">Category</label>
-            <select value={productFormData.category} onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })} required className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500">
-              <option value="">Select Category</option>
-              {categories.filter(c => c.status === "active").map((cat) => (
-                <option key={cat.id} value={cat.name}>{cat.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-black text-slate-700">Subcategory</label>
-            <input type="text" placeholder="Electronics Accessories" value={productFormData.subcategory} onChange={(e) => setProductFormData({ ...productFormData, subcategory: e.target.value })} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500" />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-black text-slate-700">Price (KSh)</label>
-            <input type="number" placeholder="4999" value={productFormData.price} onChange={(e) => setProductFormData({ ...productFormData, price: e.target.value })} required className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500" />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-black text-slate-700">Old Price (Optional)</label>
-            <input type="number" placeholder="6499" value={productFormData.oldPrice} onChange={(e) => setProductFormData({ ...productFormData, oldPrice: e.target.value })} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500" />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-black text-slate-700">Stock Quantity</label>
-            <input type="number" placeholder="1" value={productFormData.stock} onChange={(e) => setProductFormData({ ...productFormData, stock: e.target.value })} required className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500" />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-black text-slate-700">Image URL</label>
-            <input type="url" placeholder="https://example.com/product-image.jpg" value={productFormData.image} onChange={(e) => setProductFormData({ ...productFormData, image: e.target.value })} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500" />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-black text-slate-700">Description</label>
-            <textarea rows="3" placeholder="Product description..." value={productFormData.description} onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })} className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500" />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-black text-slate-700">Status</label>
-            <select value={productFormData.status} onChange={(e) => setProductFormData({ ...productFormData, status: e.target.value })} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-purple-500">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-5">
-          <div className="mb-4 overflow-hidden rounded-[24px] border border-slate-200 bg-white">
-            <div className="flex h-44 items-center justify-center bg-slate-100">
-              {productFormData.image ? (
-                <img src={productFormData.image} alt="Preview" className="h-full w-full object-cover" />
-              ) : (
-                <ImagePlus size={42} className="text-slate-400" />
-              )}
-            </div>
-            <div className="p-4">
-              <h3 className="font-black text-slate-950">{productFormData.name || "Product Name"}</h3>
-              <p className="text-xl font-black text-purple-600">KSh {productFormData.price || "0"}</p>
-              {productFormData.oldPrice && <p className="text-sm text-slate-400 line-through">KSh {productFormData.oldPrice}</p>}
-            </div>
-          </div>
-
-          <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-sm font-bold text-white hover:bg-purple-700">
-            <Save size={18} />
-            {editingProduct ? "Update Product" : "Save Product"}
-          </button>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function CategoriesList({ filteredCategories, loading, handleEdit, handleDelete, setCategoryFormData, setFormOpen, setEditingCategory }) {
+function CategoriesList({ filteredCategories, loading, handleDelete, onEdit }) {
   return (
     <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-6 py-5">
@@ -523,11 +647,7 @@ function CategoriesList({ filteredCategories, loading, handleEdit, handleDelete,
                   </span>
                 </div>
                 <div className="mt-5 flex gap-2">
-                  <button onClick={() => {
-                    setCategoryFormData(category);
-                    setEditingCategory(category);
-                    setFormOpen(true);
-                  }} className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-purple-50">
+                  <button onClick={() => onEdit(category)} className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-purple-50">
                     <Pencil size={17} />
                   </button>
                   <button onClick={() => handleDelete(category.id)} className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-red-50">
@@ -543,7 +663,7 @@ function CategoriesList({ filteredCategories, loading, handleEdit, handleDelete,
   );
 }
 
-function ProductsList({ products, loading, handleEdit, handleDelete, setProductFormData, setProductFormOpen, setEditingProduct, categories }) {
+function ProductsList({ products, loading, handleDelete, onEdit, onAdd }) {
   return (
     <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-6 py-5">
@@ -557,7 +677,7 @@ function ProductsList({ products, loading, handleEdit, handleDelete, setProductF
         <div className="flex flex-col items-center justify-center p-16 text-center">
           <Package size={54} className="text-purple-500" />
           <h3 className="mt-4 text-2xl font-black text-slate-950">No products found</h3>
-          <button onClick={() => setProductFormOpen(true)} className="mt-4 rounded-2xl bg-purple-600 px-6 py-2 text-white">Add Product</button>
+          <button onClick={onAdd} className="mt-4 rounded-2xl bg-purple-600 px-6 py-2 text-white">Add Product</button>
         </div>
       ) : (
         <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
@@ -575,11 +695,7 @@ function ProductsList({ products, loading, handleEdit, handleDelete, setProductF
                 <p className="text-xl font-black text-purple-600">KSh {product.price}</p>
                 {product.oldPrice && <p className="text-sm text-slate-400 line-through">KSh {product.oldPrice}</p>}
                 <div className="mt-3 flex gap-2">
-                  <button onClick={() => {
-                    setProductFormData(product);
-                    setEditingProduct(product);
-                    setProductFormOpen(true);
-                  }} className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-purple-50">
+                  <button onClick={() => onEdit(product)} className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-purple-50">
                     <Pencil size={17} />
                   </button>
                   <button onClick={() => handleDelete(product.id)} className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-red-50">

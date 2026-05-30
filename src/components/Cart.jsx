@@ -11,6 +11,7 @@ import {
   Truck,
   ShieldCheck,
   RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 
 export default function CartPage() {
@@ -18,12 +19,68 @@ export default function CartPage() {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [error, setError] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
-  // Load cart from localStorage and fetch recommended products
+  // Load current user
   useEffect(() => {
-    loadCartFromStorage();
-    fetchRecommendedProducts();
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    setCurrentUser(user);
   }, []);
+
+  // Load cart from database when user changes
+  useEffect(() => {
+    if (currentUser && currentUser.id) {
+      loadCartFromDatabase();
+    } else {
+      // If no user logged in, try loading from localStorage (guest cart)
+      loadCartFromStorage();
+    }
+    fetchRecommendedProducts();
+  }, [currentUser]);
+
+  const loadCartFromDatabase = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch cart items for current user
+      const response = await fetch(`http://localhost:5000/cart_items?userId=${currentUser.id}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const cartItems = await response.json();
+      
+      // For each cart item, fetch the full product details
+      const enrichedCart = await Promise.all(
+        cartItems.map(async (cartItem) => {
+          const productRes = await fetch(`http://localhost:5000/products/${cartItem.productId}`);
+          const product = await productRes.json();
+          return {
+            id: cartItem.productId,
+            cartItemId: cartItem.id,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+            category: product.category,
+            quantity: cartItem.quantity,
+            sellerId: product.sellerId,
+          };
+        })
+      );
+      
+      setCart(enrichedCart);
+    } catch (error) {
+      console.error("Failed to load cart from database:", error);
+      // Fallback to localStorage
+      loadCartFromStorage();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadCartFromStorage = () => {
     setLoading(true);
@@ -31,28 +88,97 @@ export default function CartPage() {
       const savedCart = localStorage.getItem("cart");
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
-        // Validate each item has required fields
         const validCart = parsedCart.filter(
           (item) => item.id && item.name && typeof item.price === "number"
         );
         setCart(validCart);
-        if (validCart.length !== parsedCart.length) {
-          localStorage.setItem("cart", JSON.stringify(validCart));
-        }
       } else {
         setCart([]);
       }
     } catch (error) {
-      console.error("Failed to load cart:", error);
+      console.error("Failed to load cart from storage:", error);
       setCart([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveCartToStorage = (updatedCart) => {
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
-    setCart(updatedCart);
+  const syncCartToDatabase = async (updatedCart) => {
+    if (!currentUser || !currentUser.id) {
+      // Save to localStorage if not logged in
+      localStorage.setItem("cart", JSON.stringify(updatedCart));
+      setCart(updatedCart);
+      return;
+    }
+
+    setSyncing(true);
+    
+    try {
+      // Get existing cart items from database
+      const response = await fetch(`http://localhost:5000/cart_items?userId=${currentUser.id}`);
+      const existingItems = await response.json();
+      
+      // Delete items that are no longer in cart
+      for (const existingItem of existingItems) {
+        const stillInCart = updatedCart.find(item => item.id == existingItem.productId);
+        if (!stillInCart) {
+          await fetch(`http://localhost:5000/cart_items/${existingItem.id}`, {
+            method: "DELETE",
+          });
+        }
+      }
+      
+      // Update or create cart items
+      for (const cartItem of updatedCart) {
+        const existingItem = existingItems.find(item => item.productId == cartItem.id);
+        
+        if (existingItem) {
+          // Update existing item
+          await fetch(`http://localhost:5000/cart_items/${existingItem.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              quantity: cartItem.quantity,
+              updatedAt: new Date().toISOString(),
+            }),
+          });
+        } else {
+          // Create new cart item
+          await fetch("http://localhost:5000/cart_items", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: Date.now(),
+              userId: currentUser.id,
+              productId: cartItem.id,
+              quantity: cartItem.quantity,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }),
+          });
+        }
+      }
+      
+      setCart(updatedCart);
+    } catch (error) {
+      console.error("Failed to sync cart to database:", error);
+      // Fallback to localStorage
+      localStorage.setItem("cart", JSON.stringify(updatedCart));
+      setCart(updatedCart);
+      setError("Failed to sync cart with server. Changes saved locally.");
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const saveCart = async (updatedCart) => {
+    if (currentUser && currentUser.id) {
+      await syncCartToDatabase(updatedCart);
+    } else {
+      localStorage.setItem("cart", JSON.stringify(updatedCart));
+      setCart(updatedCart);
+    }
   };
 
   const fetchRecommendedProducts = async () => {
@@ -63,6 +189,7 @@ export default function CartPage() {
       setRecommendedProducts(activeProducts);
     } catch (error) {
       console.error("Failed to fetch recommended products:", error);
+      // Fallback products
       setRecommendedProducts([
         { id: "rec1", name: "Wireless Mouse", price: 1299, image: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=150" },
         { id: "rec2", name: "USB-C Cable", price: 599, image: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=150" },
@@ -72,7 +199,7 @@ export default function CartPage() {
     }
   };
 
-  const updateQuantity = (productId, newQuantity) => {
+  const updateQuantity = async (productId, newQuantity) => {
     if (newQuantity < 1) {
       removeItem(productId);
       return;
@@ -80,17 +207,17 @@ export default function CartPage() {
     const updatedCart = cart.map((item) =>
       item.id === productId ? { ...item, quantity: newQuantity } : item
     );
-    saveCartToStorage(updatedCart);
+    await saveCart(updatedCart);
   };
 
-  const removeItem = (productId) => {
+  const removeItem = async (productId) => {
     const updatedCart = cart.filter((item) => item.id !== productId);
-    saveCartToStorage(updatedCart);
+    await saveCart(updatedCart);
   };
 
-  const clearCart = () => {
+  const clearCart = async () => {
     if (window.confirm("Clear all items from your cart?")) {
-      saveCartToStorage([]);
+      await saveCart([]);
     }
   };
 
@@ -151,6 +278,21 @@ export default function CartPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-white py-8">
       <div className="max-w-7xl mx-auto px-5">
+        {/* Sync Status Banner */}
+        {syncing && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200 flex items-center gap-2 text-sm text-blue-700">
+            <RefreshCw size={16} className="animate-spin" />
+            Syncing your cart...
+          </div>
+        )}
+        
+        {error && (
+          <div className="mb-4 p-3 bg-yellow-50 rounded-xl border border-yellow-200 flex items-center gap-2 text-sm text-yellow-700">
+            <AlertCircle size={16} />
+            {error}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link
@@ -163,6 +305,8 @@ export default function CartPage() {
             <h1 className="text-3xl font-black text-slate-900">Shopping Cart</h1>
             <p className="text-sm text-slate-500 mt-1">
               {cartItemCount} {cartItemCount === 1 ? "item" : "items"} in your cart
+              {currentUser && <span className="ml-2 text-purple-600">• Synced with account</span>}
+              {!currentUser && <span className="ml-2 text-yellow-600">• Guest cart</span>}
             </p>
           </div>
         </div>
@@ -191,6 +335,9 @@ export default function CartPage() {
                       src={item.image || "https://via.placeholder.com/120"}
                       alt={item.name}
                       className="w-full h-full rounded-xl object-cover bg-slate-100"
+                      onError={(e) => {
+                        e.target.src = "https://via.placeholder.com/120";
+                      }}
                     />
                   </div>
 
@@ -214,14 +361,16 @@ export default function CartPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-purple-50 hover:border-purple-200 transition"
+                            disabled={syncing}
+                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-purple-50 hover:border-purple-200 transition disabled:opacity-50"
                           >
                             <Minus size={14} className="mx-auto" />
                           </button>
                           <span className="w-10 text-center font-semibold text-slate-900">{item.quantity}</span>
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-purple-50 hover:border-purple-200 transition"
+                            disabled={syncing}
+                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-purple-50 hover:border-purple-200 transition disabled:opacity-50"
                           >
                             <Plus size={14} className="mx-auto" />
                           </button>
@@ -235,7 +384,8 @@ export default function CartPage() {
 
                         <button
                           onClick={() => removeItem(item.id)}
-                          className="text-red-400 hover:text-red-600 transition"
+                          disabled={syncing}
+                          className="text-red-400 hover:text-red-600 transition disabled:opacity-50"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -247,6 +397,7 @@ export default function CartPage() {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          disabled={syncing}
                           className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-600"
                         >
                           <Minus size={14} className="mx-auto" />
@@ -254,6 +405,7 @@ export default function CartPage() {
                         <span className="font-semibold text-slate-900">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          disabled={syncing}
                           className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-600"
                         >
                           <Plus size={14} className="mx-auto" />
@@ -263,7 +415,7 @@ export default function CartPage() {
                         <p className="text-lg font-bold text-purple-600">
                           KSh {(item.price * item.quantity).toLocaleString()}
                         </p>
-                        <button onClick={() => removeItem(item.id)} className="text-red-400">
+                        <button onClick={() => removeItem(item.id)} disabled={syncing} className="text-red-400">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -277,7 +429,8 @@ export default function CartPage() {
             <div className="flex justify-between items-center pt-2">
               <button
                 onClick={clearCart}
-                className="text-sm text-red-500 hover:text-red-600 font-medium"
+                disabled={syncing}
+                className="text-sm text-red-500 hover:text-red-600 font-medium disabled:opacity-50"
               >
                 Clear Cart
               </button>
@@ -347,7 +500,7 @@ export default function CartPage() {
               {/* Checkout Button */}
               <button
                 onClick={handleCheckout}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || syncing}
                 className="w-full rounded-xl bg-purple-600 py-3.5 font-bold text-white transition hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <CreditCard size={18} />
@@ -385,6 +538,9 @@ export default function CartPage() {
                       src={product.image || "https://via.placeholder.com/150"}
                       alt={product.name}
                       className="h-24 w-full object-contain mb-2"
+                      onError={(e) => {
+                        e.target.src = "https://via.placeholder.com/150";
+                      }}
                     />
                     <p className="text-sm font-medium text-slate-800 line-clamp-2">{product.name}</p>
                     <p className="text-purple-600 font-bold mt-1">

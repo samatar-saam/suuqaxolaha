@@ -8,11 +8,11 @@ import {
   BarChart3,
   Star,
   Bell,
+   Mail,
   LifeBuoy,
   Settings,
   LogOut,
   Search,
-  Plus,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -58,15 +58,15 @@ export default function AdminDashboard() {
     { name: "Reports", path: "/admin/reports", icon: BarChart3 },
     { name: "Reviews", path: "/admin/reviews", icon: Star },
     { name: "Support", path: "/admin/support", icon: LifeBuoy },
+    { name: "Messages", path: "/admin/messages", icon: Mail },
+
     { name: "Settings", path: "/admin/settings", icon: Settings },
   ];
 
   const handleLogout = () => {
-    // Clear admin authentication data
     localStorage.removeItem("admin");
     localStorage.removeItem("isAdminAuthenticated");
     localStorage.removeItem("adminLoginTime");
-    // Redirect to homepage instead of admin login
     navigate("/", { replace: true });
   };
 
@@ -212,12 +212,13 @@ export default function AdminDashboard() {
                 />
               </div>
 
+              {/* Logout Button - Changed from Add Product */}
               <button
-                onClick={() => navigate("/admin/products/add")}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-fuchsia-600 px-5 py-3 text-sm font-bold text-white shadow-xl shadow-purple-300/30 transition hover:scale-[1.02]"
+                onClick={handleLogout}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-red-700 hover:scale-[1.02]"
               >
-                <Plus size={16} />
-                Add Product
+                <LogOut size={16} />
+                Logout
               </button>
 
               <button className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700">
