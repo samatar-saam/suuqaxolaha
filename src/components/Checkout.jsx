@@ -14,6 +14,9 @@ import {
   ChevronRight,
   ChevronLeft,
   Package,
+  Lock,
+  Key,
+  AlertCircle,
 } from "lucide-react";
 
 export default function Checkout() {
@@ -24,6 +27,12 @@ export default function Checkout() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
+  
+  // Payment modal states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentPin, setPaymentPin] = useState("");
+  const [paymentError, setPaymentError] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [shippingDetails, setShippingDetails] = useState({
     fullName: "",
@@ -118,18 +127,64 @@ export default function Checkout() {
     }
   };
 
-  const handlePlaceOrder = async () => {
+  // Open payment modal instead of placing order directly
+  const openPaymentModal = () => {
     if (!shippingDetails.fullName || !shippingDetails.email || !shippingDetails.phone || !shippingDetails.address) {
       alert("Please fill in all required fields.");
       return;
     }
+    setShowPaymentModal(true);
+    setPaymentPin("");
+    setPaymentError("");
+  };
 
+  // Process payment with PIN
+  const processPayment = async () => {
+    if (!paymentPin.trim()) {
+      setPaymentError("Please enter your PIN/Password");
+      return;
+    }
+
+    // Validate PIN based on payment method
+    if (paymentMethod === "mpesa") {
+      if (paymentPin.length < 4) {
+        setPaymentError("M-PESA PIN must be at least 4 digits");
+        return;
+      }
+      if (!/^\d+$/.test(paymentPin)) {
+        setPaymentError("M-PESA PIN must contain only numbers");
+        return;
+      }
+    } else if (paymentMethod === "card") {
+      if (paymentPin.length < 3) {
+        setPaymentError("Card CVV must be 3-4 digits");
+        return;
+      }
+    } else if (paymentMethod === "cod") {
+      // Cash on Delivery - no PIN validation needed
+      // Just confirm the order
+    }
+
+    setIsProcessing(true);
+    setPaymentError("");
+
+    // Simulate payment processing
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // For demo purposes, accept any valid PIN
+    // In production, you would verify with your payment gateway
+    
+    setShowPaymentModal(false);
+    await placeOrder();
+    setIsProcessing(false);
+  };
+
+  const placeOrder = async () => {
     setLoading(true);
 
     const newTrackingNumber = generateTrackingNumber();
     const orderIdValue = `ORD-${Date.now()}`;
 
-    // 1. Create the main order
     const orderData = {
       id: orderIdValue,
       trackingNumber: newTrackingNumber,
@@ -146,13 +201,13 @@ export default function Checkout() {
       deliveryFee: getDeliveryFee(),
       total: getTotal(),
       paymentMethod: paymentMethod,
+      paymentStatus: "completed",
       status: "pending",
       notes: shippingDetails.notes,
       createdAt: new Date().toISOString(),
     };
 
     try {
-      // Save the order
       const orderResponse = await fetch("http://localhost:5000/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -163,7 +218,6 @@ export default function Checkout() {
         throw new Error("Failed to create order");
       }
 
-      // 2. Save each cart item as an order_item
       const orderItemsPromises = cart.map(async (item) => {
         const orderItem = {
           id: `ITEM-${Date.now()}-${item.id}`,
@@ -191,7 +245,6 @@ export default function Checkout() {
 
       await Promise.all(orderItemsPromises);
 
-      // Clear cart and show success
       localStorage.removeItem("cart");
       setOrderId(orderIdValue);
       setTrackingNumber(newTrackingNumber);
@@ -204,6 +257,47 @@ export default function Checkout() {
       setLoading(false);
     }
   };
+
+  // Get modal title and placeholder based on payment method
+  const getPaymentModalConfig = () => {
+    switch (paymentMethod) {
+      case "mpesa":
+        return {
+          title: "Enter M-PESA PIN",
+          icon: Smartphone,
+          placeholder: "Enter your M-PESA PIN",
+          inputType: "password",
+          hint: "Enter the 4-6 digit PIN you use for M-PESA transactions",
+        };
+      case "card":
+        return {
+          title: "Enter Card CVV",
+          icon: CreditCard,
+          placeholder: "Enter CVV",
+          inputType: "password",
+          hint: "Enter the 3-digit security code on the back of your card",
+        };
+      case "cod":
+        return {
+          title: "Confirm Cash on Delivery",
+          icon: Banknote,
+          placeholder: "Type 'CONFIRM' to proceed",
+          inputType: "text",
+          hint: "You will pay KSh " + getTotal().toLocaleString() + " when your order arrives",
+        };
+      default:
+        return {
+          title: "Payment Confirmation",
+          icon: Lock,
+          placeholder: "Enter confirmation",
+          inputType: "password",
+          hint: "Please enter your payment confirmation",
+        };
+    }
+  };
+
+  const modalConfig = getPaymentModalConfig();
+  const ModalIcon = modalConfig.icon;
 
   if (orderPlaced) {
     return (
@@ -234,7 +328,7 @@ export default function Checkout() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-white py-8">
       <div className="max-w-7xl mx-auto px-5">
-        {/* Header - same as before */}
+        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           {step > 1 ? (
             <button onClick={prevStep} className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 hover:bg-purple-50 transition">
@@ -251,7 +345,7 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* Steps indicator - same as before */}
+        {/* Steps indicator */}
         <div className="mb-8 flex items-center justify-center gap-4">
           <div className={`flex items-center gap-2 ${step >= 1 ? "text-purple-600" : "text-slate-400"}`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${step >= 1 ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-500"}`}>1</div>
@@ -269,9 +363,8 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* Rest of the JSX remains the same */}
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main form - same as before */}
+          {/* Main form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Step 1: Cart Review */}
             {step === 1 && (
@@ -302,7 +395,7 @@ export default function Checkout() {
               </div>
             )}
 
-            {/* Step 2: Shipping Details - same as before */}
+            {/* Step 2: Shipping Details */}
             {step === 2 && (
               <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
                 <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -340,7 +433,7 @@ export default function Checkout() {
               </div>
             )}
 
-            {/* Step 3: Payment Method - same as before */}
+            {/* Step 3: Payment Method */}
             {step === 3 && (
               <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
                 <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -390,17 +483,18 @@ export default function Checkout() {
                 </button>
               ) : (
                 <button
-                  onClick={handlePlaceOrder}
+                  onClick={openPaymentModal}
                   disabled={loading}
                   className="px-8 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition disabled:opacity-70 flex items-center justify-center gap-2 ml-auto"
                 >
-                  {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Place Order"}
+                  <Lock size={18} />
+                  Proceed to Payment
                 </button>
               )}
             </div>
           </div>
 
-          {/* Order Summary - same as before */}
+          {/* Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm sticky top-28">
               <h3 className="text-lg font-bold text-slate-900 mb-4">Order Summary</h3>
@@ -462,6 +556,83 @@ export default function Checkout() {
           </div>
         </div>
       </div>
+
+      {/* Payment PIN Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !isProcessing && setShowPaymentModal(false)}>
+          <div className="relative max-w-md w-full bg-white rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="text-center mb-4">
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <ModalIcon size={28} className="text-purple-600" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">{modalConfig.title}</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Amount: <span className="font-bold text-purple-600">KSh {getTotal().toLocaleString()}</span>
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    {paymentMethod === "mpesa" ? "M-PESA PIN" : paymentMethod === "card" ? "CVV Code" : "Confirmation"}
+                  </label>
+                  <input
+                    type={modalConfig.inputType}
+                    value={paymentPin}
+                    onChange={(e) => {
+                      setPaymentPin(e.target.value);
+                      setPaymentError("");
+                    }}
+                    placeholder={modalConfig.placeholder}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-lg outline-none focus:border-purple-400 text-center"
+                    autoFocus
+                    disabled={isProcessing}
+                  />
+                  <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                    <Key size={12} />
+                    {modalConfig.hint}
+                  </p>
+                </div>
+
+                {paymentError && (
+                  <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
+                    <AlertCircle size={16} />
+                    {paymentError}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowPaymentModal(false)}
+                    disabled={isProcessing}
+                    className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={processPayment}
+                    disabled={isProcessing}
+                    className="flex-1 rounded-xl bg-purple-600 py-3 text-sm font-semibold text-white hover:bg-purple-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={16} />
+                        Confirm Payment
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

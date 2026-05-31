@@ -47,6 +47,7 @@ export default function CategoriesPage() {
   const [canReview, setCanReview] = useState(false);
   const [wishlistMessage, setWishlistMessage] = useState(null);
   const [loadingWishlist, setLoadingWishlist] = useState(false);
+  const [cartMessage, setCartMessage] = useState(null);
 
   // Load user from localStorage
   useEffect(() => {
@@ -71,7 +72,7 @@ export default function CategoriesPage() {
     }
   }, []);
 
-  // Save cart to localStorage
+  // Save cart to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -87,12 +88,10 @@ export default function CategoriesPage() {
     setLoadingWishlist(true);
     
     if (user && user.id) {
-      // Logged in user - load from database
       try {
         const response = await fetch(`http://localhost:5000/wishlists?userId=${user.id}`);
         const wishlistItems = await response.json();
         
-        // Fetch product details for each wishlist item
         const enrichedWishlist = await Promise.all(
           wishlistItems.map(async (item) => {
             try {
@@ -125,7 +124,6 @@ export default function CategoriesPage() {
         console.error("Failed to load wishlist from database:", error);
       }
     } else {
-      // Guest user - load from localStorage
       const savedWishlist = localStorage.getItem("public_wishlist");
       if (savedWishlist) {
         try {
@@ -242,8 +240,10 @@ export default function CategoriesPage() {
     setQuantity(clamped);
   };
 
+  // FIXED: addToCart function
   const addToCart = () => {
     if (!selectedProduct) return;
+    
     const stock = selectedProduct.stock || 1;
     if (quantity > stock) {
       alert(`Only ${stock} item(s) available in stock.`);
@@ -254,45 +254,125 @@ export default function CategoriesPage() {
       return;
     }
 
-    const existingItem = cart.find((item) => item.id === selectedProduct.id);
+    // Get current cart from localStorage directly
+    const currentCart = JSON.parse(localStorage.getItem("cart") || "[]");
+    
+    // Check if product already exists
+    const existingItemIndex = currentCart.findIndex((item) => item.id === selectedProduct.id);
+    
     let updatedCart;
-    if (existingItem) {
-      const newTotal = existingItem.quantity + quantity;
-      if (newTotal > stock) {
+    if (existingItemIndex !== -1) {
+      const existingItem = currentCart[existingItemIndex];
+      const newQuantity = existingItem.quantity + quantity;
+      
+      if (newQuantity > stock) {
         alert(`You already have ${existingItem.quantity} in cart. Only ${stock - existingItem.quantity} more can be added.`);
         return;
       }
-      updatedCart = cart.map((item) =>
-        item.id === selectedProduct.id ? { ...item, quantity: newTotal } : item
-      );
+      
+      updatedCart = [...currentCart];
+      updatedCart[existingItemIndex] = {
+        ...existingItem,
+        quantity: newQuantity
+      };
     } else {
       updatedCart = [
-        ...cart,
+        ...currentCart,
         {
           id: selectedProduct.id,
           name: selectedProduct.name,
           price: selectedProduct.price,
           image: selectedProduct.image,
           category: selectedProduct.category,
-          quantity,
+          quantity: quantity,
         },
       ];
     }
+    
+    // Save to localStorage
+    localStorage.setItem("cart", JSON.stringify(updatedCart));
+    
+    // Update state
     setCart(updatedCart);
+    
+    // Show success message
+    setCartMessage({
+      type: "success",
+      text: `✓ Added ${quantity} x ${selectedProduct.name} to cart!`
+    });
+    setTimeout(() => setCartMessage(null), 2000);
+    
     closeModal();
-    alert(`Added ${quantity} x ${selectedProduct.name} to cart!`);
   };
 
-  // Updated addToWishlist function - works for both guest and logged-in users
+  // Quick add to cart from product card
+  const quickAddToCart = (product, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const stock = product.stock || 1;
+    if (stock === 0) {
+      alert("This product is out of stock.");
+      return;
+    }
+    
+    // Get current cart from localStorage
+    const currentCart = JSON.parse(localStorage.getItem("cart") || "[]");
+    
+    // Check if product already exists
+    const existingItemIndex = currentCart.findIndex((item) => item.id === product.id);
+    
+    let updatedCart;
+    if (existingItemIndex !== -1) {
+      const existingItem = currentCart[existingItemIndex];
+      const newQuantity = existingItem.quantity + 1;
+      
+      if (newQuantity > stock) {
+        alert(`Only ${stock} items available in stock.`);
+        return;
+      }
+      
+      updatedCart = [...currentCart];
+      updatedCart[existingItemIndex] = {
+        ...existingItem,
+        quantity: newQuantity
+      };
+    } else {
+      updatedCart = [
+        ...currentCart,
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          category: product.category,
+          quantity: 1,
+        },
+      ];
+    }
+    
+    // Save to localStorage
+    localStorage.setItem("cart", JSON.stringify(updatedCart));
+    
+    // Update state
+    setCart(updatedCart);
+    
+    // Show success message
+    setCartMessage({
+      type: "success",
+      text: `✓ ${product.name} added to cart!`
+    });
+    setTimeout(() => setCartMessage(null), 2000);
+  };
+
+  // Updated addToWishlist function
   const addToWishlist = async (product, e) => {
     e.stopPropagation();
     
     if (user && user.id) {
-      // LOGGED IN USER - Save to database
       setLoadingWishlist(true);
       
       try {
-        // Check if already in wishlist
         const checkRes = await fetch(`http://localhost:5000/wishlists?userId=${user.id}&productId=${product.id}`);
         const existing = await checkRes.json();
         
@@ -306,7 +386,6 @@ export default function CategoriesPage() {
           return;
         }
         
-        // Add to database wishlist
         const response = await fetch("http://localhost:5000/wishlists", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -319,7 +398,6 @@ export default function CategoriesPage() {
         });
         
         if (response.ok) {
-          // Update local state
           const wishlistItem = {
             id: Date.now(),
             productId: product.id,
@@ -349,7 +427,6 @@ export default function CategoriesPage() {
         setLoadingWishlist(false);
       }
     } else {
-      // GUEST USER - Save to localStorage
       const currentWishlist = JSON.parse(localStorage.getItem("public_wishlist") || "[]");
       const already = currentWishlist.some((item) => item.id === product.id);
       
@@ -459,13 +536,19 @@ export default function CategoriesPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 pt-20">
-      {/* Toast Message */}
+      {/* Toast Messages */}
       {wishlistMessage && (
         <div className={`fixed top-24 right-5 z-50 px-4 py-2 rounded-lg shadow-lg ${
           wishlistMessage.type === "success" ? "bg-green-500 text-white" : 
           wishlistMessage.type === "error" ? "bg-red-500 text-white" : "bg-blue-500 text-white"
         }`}>
           {wishlistMessage.text}
+        </div>
+      )}
+      
+      {cartMessage && (
+        <div className="fixed top-24 right-5 z-50 px-4 py-2 rounded-lg shadow-lg bg-green-500 text-white">
+          {cartMessage.text}
         </div>
       )}
 
@@ -574,7 +657,7 @@ export default function CategoriesPage() {
                       }`}
                       onClick={() => !isOutOfStock(product) && openModal(product)}
                     >
-                      {/* Heart button - always clickable */}
+                      {/* Heart button */}
                       <button
                         onClick={(e) => addToWishlist(product, e)}
                         disabled={loadingWishlist}
@@ -589,6 +672,17 @@ export default function CategoriesPage() {
                           }
                         />
                       </button>
+
+                      {/* Quick Add Button */}
+                      {!isOutOfStock(product) && (
+                        <button
+                          onClick={(e) => quickAddToCart(product, e)}
+                          className="absolute bottom-2 left-2 right-2 z-10 bg-purple-600 text-white text-xs font-semibold py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-1"
+                        >
+                          <ShoppingCart size={12} />
+                          Quick Add
+                        </button>
+                      )}
 
                       <div className="overflow-hidden rounded-xl bg-slate-50 p-3">
                         <img

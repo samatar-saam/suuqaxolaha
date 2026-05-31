@@ -18,7 +18,7 @@ import {
   Star,
   Truck,
   ShieldCheck,
-  Ticket, // Add Ticket icon
+  Ticket,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import DashboardOverview from "../pages/DashboardOverview";
@@ -29,13 +29,13 @@ import UserWishlist from "../pages/UserWishlist";
 import MyReviews from "../pages/MyReviews";
 import OrderReport from "../pages/ReportIssue";
 import UserSupport from "../pages/UserSupport";
-import UserTickets from "../pages/UserTickets"; // Import UserTickets component
+import UserTickets from "../pages/UserTickets";
 
 function UserDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false); // Keep false for expanded sidebar
   const [isMobile, setIsMobile] = useState(false);
 
   // Check if mobile on mount and resize
@@ -72,7 +72,7 @@ function UserDashboard() {
     { name: "Profile", path: "/dashboard/profile", icon: User },
     { name: "Order Report", path: "/dashboard/report", icon: FileText },
     { name: "Support", path: "/dashboard/support", icon: LifeBuoy },
-    { name: "My Tickets", path: "/dashboard/tickets", icon: Ticket }, // Add My Tickets nav item
+    { name: "My Tickets", path: "/dashboard/tickets", icon: Ticket },
   ];
 
   const handleLogout = () => {
@@ -100,6 +100,7 @@ function UserDashboard() {
     : "SuuqHub Shopper";
   const userEmail = currentUser?.email || "shopper@suuqhub.com";
 
+  // When collapsed on desktop, sidebar is 80px (w-20), when expanded it's 288px (w-72)
   const sidebarWidth = isCollapsed && !isMobile ? "w-20" : "w-72";
   const mainMargin = isCollapsed && !isMobile ? "md:ml-20" : "md:ml-72";
 
@@ -139,6 +140,7 @@ function UserDashboard() {
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 className="hidden lg:flex rounded-xl p-1.5 sm:p-2 text-slate-300 transition hover:bg-white/10"
+                title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
                 {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
               </button>
@@ -268,7 +270,7 @@ function UserDashboard() {
               <Route path="profile" element={<UserProfile />} />
               <Route path="report" element={<OrderReport />} />
               <Route path="support" element={<UserSupport />} />
-              <Route path="tickets" element={<UserTickets />} /> {/* Add tickets route */}
+              <Route path="tickets" element={<UserTickets />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </main>
