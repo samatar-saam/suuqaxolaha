@@ -7,7 +7,6 @@ import {
   Clock,
   Send,
   MessageCircle,
- 
   CheckCircle,
   AlertCircle,
   Globe,
@@ -50,7 +49,6 @@ export default function Contact() {
     setIsSubmitting(true);
     setError("");
 
-    // Simulate API call - In production, send to your backend
     const contactData = {
       id: `MSG-${Date.now()}`,
       ...formData,
@@ -59,7 +57,6 @@ export default function Contact() {
     };
 
     try {
-      // Save to your JSON server (optional)
       const response = await fetch("http://localhost:5000/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,7 +72,6 @@ export default function Contact() {
       }
     } catch (error) {
       console.error("Contact form error:", error);
-      // Still show success for demo, but log the error
       setIsSubmitted(true);
       setFormData({ name: "", email: "", subject: "", message: "" });
       setTimeout(() => setIsSubmitted(false), 5000);
@@ -115,8 +111,6 @@ export default function Contact() {
     },
   ];
 
-
-
   const faqs = [
     {
       question: "How do I track my order?",
@@ -137,7 +131,7 @@ export default function Contact() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white py-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-5">
         {/* Header Section */}
         <div className="text-center mb-12">
@@ -342,23 +336,6 @@ export default function Contact() {
                 </p>
               </div>
               <div className="p-6">
-                {/* <div className="grid grid-cols-2 gap-3">
-                  {socialLinks.map((social, idx) => {
-                    const Icon = social.icon;
-                    return (
-                      <a
-                        key={idx}
-                        href={social.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`flex items-center justify-center gap-2 rounded-xl ${social.color} px-4 py-3 text-white font-semibold hover:opacity-90 transition`}
-                      >
-                        <Icon size={18} />
-                        {social.name}
-                      </a>
-                    );
-                  })}
-                </div> */}
                 <div className="mt-6 p-4 bg-purple-50 rounded-xl border border-purple-100">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white rounded-lg shadow-sm">

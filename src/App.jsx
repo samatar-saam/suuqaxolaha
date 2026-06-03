@@ -2,6 +2,7 @@ import "./App.css";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import Home from "./components/Home";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
@@ -10,7 +11,11 @@ import Cart from "./components/Cart";
 import Services from "./components/Services";
 import PublicWishlist from "./components/PublicWishlist";
 import Contact from "./components/Contact";
+import About from "./components/About";
+import NewArrivals from "./components/NewArrivals";
+import Checkout from "./components/Checkout";
 
+// Admin Imports
 import AdminLogin from "./admin/pages/AdminLogin";
 import AdminDashboard from "./admin/layouts/AdminDashboard";
 import DashboardOverview from "./admin/pages/DashboardOverview";
@@ -25,16 +30,11 @@ import ManageReviews from "./admin/pages/ManageReviews";
 import AdminSettings from "./admin/pages/AdminSettings";
 import ManageSupport from "./admin/pages/ManageSupport";
 import ManageMessages from "./admin/pages/ManageMessages";
-import Checkout from "./components/Checkout";
+
+// User Dashboard Import
 import UserDashboard from "./users/layout/UserDashboard";
-import Footer from "./components/Footer";
-import About from "./components/About";
-import NewArrivals from "./components/NewArrivals";
 
-
-// Note: UserTickets is already imported and used inside UserDashboard component
-// No need to import it here since it's part of the UserDashboard routes
-
+// Public Layout Component - All pages with Navbar and Footer
 function PublicLayout() {
   return (
     <>
@@ -47,24 +47,42 @@ function PublicLayout() {
   );
 }
 
+// Simple Layout without Footer (for checkout and cart)
+function SimpleLayout() {
+  return (
+    <>
+      <Navbar />
+      <main className="pt-20">
+        <Outlet />
+      </main>
+    </>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Routes */}
+        {/* Public Routes with Navbar and Footer */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/services" element={<Services />} />
           <Route path="/wishlist" element={<PublicWishlist />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/checkout" element={<Checkout />} />
           <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} /> 
+          <Route path="/contact" element={<Contact />} />
           <Route path="/new-arrivals" element={<NewArrivals />} />
         </Route>
+
+        {/* Public Routes with Navbar only (no footer) */}
+        <Route element={<SimpleLayout />}>
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+        </Route>
+
+        {/* Auth Routes - No Navbar */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
         {/* Admin Auth Route */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -85,7 +103,7 @@ function App() {
           <Route path="settings" element={<AdminSettings />} />
         </Route>
 
-        {/* User Dashboard Route - UserTickets is handled inside UserDashboard component */}
+        {/* User Dashboard Route - Protected */}
         <Route path="/dashboard/*" element={<UserDashboard />} />
       </Routes>
     </BrowserRouter>

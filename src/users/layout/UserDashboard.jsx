@@ -79,7 +79,7 @@ function UserDashboard() {
     localStorage.removeItem("user");
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("loginTime");
-    navigate("/login");
+    navigate("/");
   };
 
   const pageTitle = useMemo(() => {

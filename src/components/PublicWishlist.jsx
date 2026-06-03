@@ -23,6 +23,9 @@ export default function PublicWishlist() {
   const [currentUser, setCurrentUser] = useState(null);
   const [migrating, setMigrating] = useState(false);
 
+  // Fixed delivery fee
+  const DELIVERY_FEE = 150;
+
   // Load current user
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -44,12 +47,10 @@ export default function PublicWishlist() {
         setMigrating(true);
         
         try {
-          // Get user's existing database wishlist
           const dbRes = await fetch(`http://localhost:5000/wishlists?userId=${user.id}`);
           const dbWishlist = await dbRes.json();
           const dbProductIds = new Set(dbWishlist.map(item => item.productId));
           
-          // Add guest wishlist items that aren't already in database
           let addedCount = 0;
           for (const item of wishlist) {
             if (!dbProductIds.has(item.id)) {
@@ -74,12 +75,9 @@ export default function PublicWishlist() {
             alert(`✨ ${addedCount} item(s) from your guest wishlist have been saved to your account!`);
           }
           
-          // Mark as migrated and clear guest wishlist
           sessionStorage.setItem("wishlist_migrated", "true");
           localStorage.removeItem("public_wishlist");
           setWishlist([]);
-          
-          // Redirect to user wishlist
           navigate("/dashboard/wishlist");
         } catch (error) {
           console.error("Failed to migrate wishlist:", error);
@@ -274,7 +272,7 @@ export default function PublicWishlist() {
 
   if (migrating) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex items-center justify-center pt-24">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="mt-4 text-slate-600">Syncing your wishlist with your account...</p>
@@ -285,7 +283,7 @@ export default function PublicWishlist() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex items-center justify-center pt-24">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="mt-4 text-slate-600">Loading your wishlist...</p>
@@ -296,7 +294,7 @@ export default function PublicWishlist() {
 
   if (wishlist.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex items-center justify-center p-6 pt-24">
         <div className="text-center max-w-md">
           <div className="bg-slate-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
             <Heart size={48} className="text-slate-400" />
@@ -318,7 +316,7 @@ export default function PublicWishlist() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-5">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
@@ -460,7 +458,7 @@ export default function PublicWishlist() {
           ))}
         </div>
 
-        {/* Delivery Info Banner */}
+        {/* Delivery Info Banner - Updated with flat delivery fee */}
         <div className="mt-12 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-start gap-4">
@@ -468,9 +466,10 @@ export default function PublicWishlist() {
                 <Truck size={24} className="text-purple-600" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 mb-1">Free Delivery on orders over KSh 2,500</h3>
+                <h3 className="font-bold text-slate-900 mb-1">Flat Delivery Fee of KSh {DELIVERY_FEE}</h3>
                 <p className="text-sm text-slate-600">
-                  Add items from your wishlist to your cart and enjoy free delivery across Kenya.
+                  Enjoy a fixed delivery fee of KSh {DELIVERY_FEE} on all orders across Kenya.
+                  Add items from your wishlist to your cart and checkout securely.
                 </p>
               </div>
             </div>

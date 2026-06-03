@@ -1,6 +1,7 @@
 // src/components/Home.jsx
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import heroImage from "../assets/image/image.png"; 
 
 import {
@@ -55,6 +56,7 @@ const stagger = {
 };
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const targetRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: targetRef,
@@ -129,20 +131,12 @@ export default function HomePage() {
                 <motion.button
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  className="group flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-bold text-white shadow-xl hover:shadow-2xl transition-all"
+                  onClick={() => navigate("/categories")}
+                  className="group flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-bold text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer"
                 >
                   <ShoppingBag size={18} />
                   Shop Now
                   <ArrowRight size={16} className="group-hover:translate-x-1 transition" />
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex items-center justify-center gap-2 rounded-full border-2 border-white/30 bg-white/10 backdrop-blur-sm px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-bold text-white hover:bg-white/20 transition-all"
-                >
-                  <Store size={18} />
-                  Explore Stores
                 </motion.button>
               </motion.div>
 
@@ -188,17 +182,17 @@ export default function HomePage() {
                     className="h-[400px] lg:h-[450px] w-full object-cover"
                   />
                 </div>
-                <div className="absolute -bottom-6 -left-6 rounded-2xl bg-white/90 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-3 shadow-xl">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-purple-600 text-white">
+                {/* <div className="absolute -bottom-6 -left-6 rounded-2xl bg-white/90 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-3 shadow-xl"> */}
+                  {/* <div className="flex items-center gap-2 sm:gap-3"> */}
+                    {/* <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-purple-600 text-white">
                       <Truck size={18} />
-                    </div>
-                    <div>
+                    </div> */}
+                    {/* <div>
                       <div className="text-xs sm:text-sm font-black text-gray-900">Free Delivery</div>
                       <div className="text-[10px] sm:text-xs text-gray-500">On orders over KSh 2,500</div>
-                    </div>
-                  </div>
-                </div>
+                    </div> */}
+                  {/* </div> */}
+                {/* </div> */}
               </div>
             </motion.div>
           </motion.div>

@@ -377,12 +377,12 @@ function Signup() {
             </p>
 
             {/* Terms */}
-            <p className="mt-6 text-xs text-slate-400 text-center">
+            {/* <p className="mt-6 text-xs text-slate-400 text-center">
               By signing up, you agree to our{" "}
               <a href="/terms" className="text-purple-600 hover:underline">Terms of Service</a>
               {" "}and{" "}
               <a href="/privacy" className="text-purple-600 hover:underline">Privacy Policy</a>
-            </p>
+            </p> */}
           </div>
         </div>
       </div>

@@ -34,6 +34,9 @@ export default function Checkout() {
   const [paymentError, setPaymentError] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Fixed delivery fee - KSh 150 for all orders
+  const DELIVERY_FEE = 150;
+
   const [shippingDetails, setShippingDetails] = useState({
     fullName: "",
     email: "",
@@ -83,10 +86,10 @@ export default function Checkout() {
     return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
 
+  // Fixed delivery fee - always KSh 150
   const getDeliveryFee = () => {
-    const subtotal = getSubtotal();
-    if (subtotal === 0) return 0;
-    return subtotal > 2500 ? 0 : 250;
+    if (getSubtotal() === 0) return 0;
+    return DELIVERY_FEE;
   };
 
   const getTotal = () => {
@@ -127,7 +130,6 @@ export default function Checkout() {
     }
   };
 
-  // Open payment modal instead of placing order directly
   const openPaymentModal = () => {
     if (!shippingDetails.fullName || !shippingDetails.email || !shippingDetails.phone || !shippingDetails.address) {
       alert("Please fill in all required fields.");
@@ -138,14 +140,12 @@ export default function Checkout() {
     setPaymentError("");
   };
 
-  // Process payment with PIN
   const processPayment = async () => {
     if (!paymentPin.trim()) {
       setPaymentError("Please enter your PIN/Password");
       return;
     }
 
-    // Validate PIN based on payment method
     if (paymentMethod === "mpesa") {
       if (paymentPin.length < 4) {
         setPaymentError("M-PESA PIN must be at least 4 digits");
@@ -161,18 +161,16 @@ export default function Checkout() {
         return;
       }
     } else if (paymentMethod === "cod") {
-      // Cash on Delivery - no PIN validation needed
-      // Just confirm the order
+      if (paymentPin.toLowerCase() !== "confirm") {
+        setPaymentError('Please type "CONFIRM" to proceed');
+        return;
+      }
     }
 
     setIsProcessing(true);
     setPaymentError("");
 
-    // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // For demo purposes, accept any valid PIN
-    // In production, you would verify with your payment gateway
     
     setShowPaymentModal(false);
     await placeOrder();
@@ -258,7 +256,6 @@ export default function Checkout() {
     }
   };
 
-  // Get modal title and placeholder based on payment method
   const getPaymentModalConfig = () => {
     switch (paymentMethod) {
       case "mpesa":
@@ -301,7 +298,7 @@ export default function Checkout() {
 
   if (orderPlaced) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white py-12">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white pt-24 pb-12">
         <div className="max-w-2xl mx-auto px-5">
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -326,7 +323,7 @@ export default function Checkout() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-white py-8">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-white pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-5">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -522,31 +519,21 @@ export default function Checkout() {
                     <Truck size={14} className="text-slate-400" />
                     <span className="text-slate-600">Delivery Fee</span>
                   </div>
-                  <span className="text-slate-900">{getDeliveryFee() === 0 ? "Free" : `KSh ${getDeliveryFee()}`}</span>
+                  <span className="text-slate-900">{getDeliveryFee() === 0 ? "Free" : `KSh ${DELIVERY_FEE.toLocaleString()}`}</span>
                 </div>
-                {getSubtotal() > 2500 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Free Delivery Applied</span>
-                    <span>✓</span>
-                  </div>
-                )}
                 <div className="flex justify-between pt-2 border-t border-slate-200">
                   <span className="font-bold text-slate-900">Total</span>
                   <span className="text-xl font-black text-purple-600">KSh {getTotal().toLocaleString()}</span>
                 </div>
               </div>
 
-              {getSubtotal() < 2500 && getSubtotal() > 0 && (
-                <div className="mt-4 p-3 bg-purple-50 rounded-xl">
-                  <div className="flex justify-between text-xs text-purple-600 mb-1">
-                    <span>Add KSh {(2500 - getSubtotal()).toLocaleString()} more for FREE delivery</span>
-                    <span>{Math.round((getSubtotal() / 2500) * 100)}%</span>
-                  </div>
-                  <div className="h-1.5 bg-purple-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-600 rounded-full transition-all" style={{ width: `${Math.min((getSubtotal() / 2500) * 100, 100)}%` }} />
-                  </div>
+              {/* Fixed delivery info message */}
+              <div className="mt-4 p-3 bg-purple-50 rounded-xl">
+                <div className="flex items-center gap-2 justify-center text-xs text-purple-600">
+                  <Truck size={14} />
+                  <span>Flat delivery fee of KSh {DELIVERY_FEE} for all orders</span>
                 </div>
-              )}
+              </div>
 
               <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
                 <ShieldCheck size={12} />

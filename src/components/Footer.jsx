@@ -17,32 +17,29 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   const categories = [
-    { name: "Electronics", link: "/categories" },
-    { name: "Fashion", link: "/categories" },
-    { name: "Home & Living", link: "/categories" },
-    { name: "Beauty", link: "/categories" },
-    { name: "Sports", link: "/categories" },
-    { name: "Books", link: "/categories" },
-    { name: "Automotive", link: "/categories" },
-    { name: "Groceries", link: "/categories" },
+    { name: "Electronics", link: "/categories?category=electronics" },
+    { name: "Fashion", link: "/categories?category=fashion" },
+    { name: "Home & Living", link: "/categories?category=home-living" },
+    { name: "Beauty", link: "/categories?category=beauty" },
+    { name: "Sports", link: "/categories?category=sports" },
+    { name: "Books", link: "/categories?category=books" },
+    { name: "Automotive", link: "/categories?category=automotive" },
+    { name: "Groceries", link: "/categories?category=groceries" },
   ];
 
   const quickLinks = [
-    { name: "About Us", link: "/about" },
-    { name: "Contact Us", link: "/contact" },
-    { name: "FAQs", link: "/dashboard/support" },
-    { name: "Privacy Policy", link: "/privacy-policy" },
-    { name: "Terms & Conditions", link: "/terms-conditions" },
+    { name: "Home", link: "/" },
+    { name: "Categories", link: "/categories" },
+    { name: "Checkout", link: "/checkout" },
+    { name: "Track Order", link: "/dashboard/track-order" },
     { name: "Return Policy", link: "/return-policy" },
     { name: "Shipping Info", link: "/shipping-info" },
-    { name: "Track Order", link: "/dashboard/track-order" },
   ];
 
-  const paymentMethods = [
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/M-PESA_Logo.svg/2560px-M-PESA_Logo.svg.png",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/2560px-Visa_Inc._logo.svg.png",
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/2560px-Mastercard-logo.svg.png",
-  ];
+  const handleCategoryClick = (e, link) => {
+    e.preventDefault();
+    window.location.href = link;
+  };
 
   return (
     <footer className="bg-slate-900 text-white">
@@ -196,30 +193,6 @@ export default function Footer() {
             </div>
           </div>
         </div>
-
-        {/* Payment Methods */}
-        <div className="mt-8 pt-8 border-t border-slate-800">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="text-center sm:text-left">
-              <p className="text-sm text-slate-400">Secure Payment Methods</p>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-3">
-                {paymentMethods.map((method, index) => (
-                  <img
-                    key={index}
-                    src={method}
-                    alt="Payment method"
-                    className="h-8 w-auto object-contain bg-white rounded px-2 py-1"
-                  />
-                ))}
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <Heart size={14} className="text-red-500 fill-red-500" />
-              <span>Shop with confidence on SuuqHub</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Bottom Bar */}
@@ -230,9 +203,9 @@ export default function Footer() {
               © {currentYear} SuuqHub. All rights reserved. Shop Local. Empower Business.
             </p>
             <div className="flex gap-4 text-xs text-slate-500">
-              <Link to="/privacy-policy" className="hover:text-purple-400 transition">Privacy Policy</Link>
-              <Link to="/terms-conditions" className="hover:text-purple-400 transition">Terms</Link>
-              <Link to="/sitemap" className="hover:text-purple-400 transition">Sitemap</Link>
+              <Link to="/" className="hover:text-purple-400 transition">Home</Link>
+              <Link to="/categories" className="hover:text-purple-400 transition">Categories</Link>
+              <Link to="/checkout" className="hover:text-purple-400 transition">Checkout</Link>
             </div>
           </div>
         </div>

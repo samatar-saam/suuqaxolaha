@@ -24,6 +24,7 @@ import {
   Star,
   MessageSquare,
   Heart,
+  ChevronDown,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -48,6 +49,13 @@ export default function CategoriesPage() {
   const [wishlistMessage, setWishlistMessage] = useState(null);
   const [loadingWishlist, setLoadingWishlist] = useState(false);
   const [cartMessage, setCartMessage] = useState(null);
+  const [showAllProducts, setShowAllProducts] = useState(false);
+
+  // Cards to show initially (2 rows x 4 columns = 8 cards)
+  const INITIAL_DISPLAY_COUNT = 8;
+
+  // Delivery fee constant
+  const DELIVERY_FEE = 150;
 
   // Load user from localStorage
   useEffect(() => {
@@ -78,6 +86,11 @@ export default function CategoriesPage() {
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
     setCartCount(totalItems);
   }, [cart]);
+
+  // Reset showAll when category or search changes
+  useEffect(() => {
+    setShowAllProducts(false);
+  }, [activeCategory, searchTerm]);
 
   // Load wishlist based on user login status
   useEffect(() => {
@@ -200,6 +213,14 @@ export default function CategoriesPage() {
     });
   }, [products, activeCategory, searchTerm]);
 
+  // Get displayed products based on showAll state
+  const displayedProducts = useMemo(() => {
+    if (showAllProducts || filteredProducts.length <= INITIAL_DISPLAY_COUNT) {
+      return filteredProducts;
+    }
+    return filteredProducts.slice(0, INITIAL_DISPLAY_COUNT);
+  }, [filteredProducts, showAllProducts]);
+
   const productReviews = useMemo(() => {
     if (!selectedProduct) return [];
     return reviews.filter(
@@ -240,7 +261,7 @@ export default function CategoriesPage() {
     setQuantity(clamped);
   };
 
-  // FIXED: addToCart function
+  // Add to cart function with delivery fee
   const addToCart = () => {
     if (!selectedProduct) return;
     
@@ -254,10 +275,7 @@ export default function CategoriesPage() {
       return;
     }
 
-    // Get current cart from localStorage directly
     const currentCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    
-    // Check if product already exists
     const existingItemIndex = currentCart.findIndex((item) => item.id === selectedProduct.id);
     
     let updatedCart;
@@ -285,17 +303,14 @@ export default function CategoriesPage() {
           image: selectedProduct.image,
           category: selectedProduct.category,
           quantity: quantity,
+          deliveryFee: DELIVERY_FEE,
         },
       ];
     }
     
-    // Save to localStorage
     localStorage.setItem("cart", JSON.stringify(updatedCart));
-    
-    // Update state
     setCart(updatedCart);
     
-    // Show success message
     setCartMessage({
       type: "success",
       text: `✓ Added ${quantity} x ${selectedProduct.name} to cart!`
@@ -305,87 +320,67 @@ export default function CategoriesPage() {
     closeModal();
   };
 
-  // Quick add to cart from product card
-  const quickAddToCart = (product, e) => {
-    e.preventDefault();
+  // Remove from wishlist (unlike)
+  const removeFromWishlist = async (product, e) => {
     e.stopPropagation();
     
-    const stock = product.stock || 1;
-    if (stock === 0) {
-      alert("This product is out of stock.");
-      return;
-    }
-    
-    // Get current cart from localStorage
-    const currentCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    
-    // Check if product already exists
-    const existingItemIndex = currentCart.findIndex((item) => item.id === product.id);
-    
-    let updatedCart;
-    if (existingItemIndex !== -1) {
-      const existingItem = currentCart[existingItemIndex];
-      const newQuantity = existingItem.quantity + 1;
-      
-      if (newQuantity > stock) {
-        alert(`Only ${stock} items available in stock.`);
-        return;
+    if (user && user.id) {
+      try {
+        const wishlistItem = wishlist.find(item => item.productId === product.id);
+        if (wishlistItem) {
+          await fetch(`http://localhost:5000/wishlists/${wishlistItem.id}`, {
+            method: "DELETE",
+          });
+        }
+        
+        setWishlist(prev => prev.filter(item => item.productId !== product.id));
+        setWishlistIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(product.id);
+          return newSet;
+        });
+        
+        setWishlistMessage({
+          type: "info",
+          text: `✓ Removed "${product.name}" from wishlist`
+        });
+        setTimeout(() => setWishlistMessage(null), 2000);
+      } catch (error) {
+        console.error("Failed to remove from wishlist:", error);
       }
-      
-      updatedCart = [...currentCart];
-      updatedCart[existingItemIndex] = {
-        ...existingItem,
-        quantity: newQuantity
-      };
     } else {
-      updatedCart = [
-        ...currentCart,
-        {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          category: product.category,
-          quantity: 1,
-        },
-      ];
+      const currentWishlist = JSON.parse(localStorage.getItem("public_wishlist") || "[]");
+      const updatedWishlist = currentWishlist.filter(item => item.id !== product.id);
+      setWishlist(updatedWishlist);
+      setWishlistIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(product.id);
+        return newSet;
+      });
+      localStorage.setItem("public_wishlist", JSON.stringify(updatedWishlist));
+      
+      setWishlistMessage({
+        type: "info",
+        text: `✓ Removed "${product.name}" from wishlist`
+      });
+      setTimeout(() => setWishlistMessage(null), 2000);
     }
-    
-    // Save to localStorage
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
-    
-    // Update state
-    setCart(updatedCart);
-    
-    // Show success message
-    setCartMessage({
-      type: "success",
-      text: `✓ ${product.name} added to cart!`
-    });
-    setTimeout(() => setCartMessage(null), 2000);
   };
 
-  // Updated addToWishlist function
+  // Add to wishlist
   const addToWishlist = async (product, e) => {
     e.stopPropagation();
+    
+    // Check if already in wishlist
+    if (wishlistIds.has(product.id)) {
+      removeFromWishlist(product, e);
+      return;
+    }
     
     if (user && user.id) {
       setLoadingWishlist(true);
       
       try {
-        const checkRes = await fetch(`http://localhost:5000/wishlists?userId=${user.id}&productId=${product.id}`);
-        const existing = await checkRes.json();
-        
-        if (existing.length > 0) {
-          setWishlistMessage({
-            type: "info",
-            text: `${product.name} is already in your wishlist! ❤️`
-          });
-          setTimeout(() => setWishlistMessage(null), 2000);
-          setLoadingWishlist(false);
-          return;
-        }
-        
         const response = await fetch("http://localhost:5000/wishlists", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -412,7 +407,7 @@ export default function CategoriesPage() {
           
           setWishlistMessage({
             type: "success",
-            text: `✅ "${product.name}" added to your wishlist!`
+            text: `❤️ "${product.name}" added to wishlist!`
           });
           setTimeout(() => setWishlistMessage(null), 2000);
         }
@@ -427,18 +422,6 @@ export default function CategoriesPage() {
         setLoadingWishlist(false);
       }
     } else {
-      const currentWishlist = JSON.parse(localStorage.getItem("public_wishlist") || "[]");
-      const already = currentWishlist.some((item) => item.id === product.id);
-      
-      if (already) {
-        setWishlistMessage({
-          type: "info",
-          text: `${product.name} is already in your wishlist! ❤️`
-        });
-        setTimeout(() => setWishlistMessage(null), 2000);
-        return;
-      }
-      
       const wishlistItem = {
         id: product.id,
         name: product.name,
@@ -451,14 +434,14 @@ export default function CategoriesPage() {
         addedAt: new Date().toISOString()
       };
       
-      const updatedWishlist = [...currentWishlist, wishlistItem];
+      const updatedWishlist = [...wishlist, wishlistItem];
       setWishlist(updatedWishlist);
       setWishlistIds(new Set([...wishlistIds, product.id]));
       localStorage.setItem("public_wishlist", JSON.stringify(updatedWishlist));
       
       setWishlistMessage({
         type: "success",
-        text: `✅ "${product.name}" added to wishlist!`
+        text: `❤️ "${product.name}" added to wishlist!`
       });
       setTimeout(() => setWishlistMessage(null), 2000);
     }
@@ -534,6 +517,14 @@ export default function CategoriesPage() {
 
   const isOutOfStock = (product) => !product.stock || product.stock === 0;
 
+  const handleSeeAll = () => {
+    setShowAllProducts(true);
+  };
+
+  const handleShowLess = () => {
+    setShowAllProducts(false);
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 pt-20">
       {/* Toast Messages */}
@@ -547,12 +538,13 @@ export default function CategoriesPage() {
       )}
       
       {cartMessage && (
-        <div className="fixed top-24 right-5 z-50 px-4 py-2 rounded-lg shadow-lg bg-green-500 text-white">
+        <div className="fixed top-24 right-5 z-50 px-4 py-2 rounded-lg shadow-lg bg-green-500 text-white flex items-center gap-2 animate-bounce">
+          <ShoppingCart size={14} />
           {cartMessage.text}
         </div>
       )}
 
-      {/* Fixed Header */}
+      {/* Fixed Header with Search Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-5">
           <Link
@@ -562,7 +554,7 @@ export default function CategoriesPage() {
             <ArrowLeft size={18} />
           </Link>
 
-          {/* Search Bar */}
+          {/* Search Bar - Full width on mobile */}
           <div className="flex flex-1 items-center rounded-full border border-slate-200 bg-slate-100 px-4 py-2">
             <Search className="text-slate-400" size={18} />
             <input
@@ -587,7 +579,7 @@ export default function CategoriesPage() {
             )}
           </button>
 
-          {/* Cart Icon */}
+          {/* Cart Icon with Notification */}
           <button
             onClick={() => navigate("/cart")}
             className="relative p-2 rounded-full hover:bg-purple-50 transition"
@@ -595,7 +587,13 @@ export default function CategoriesPage() {
             <ShoppingCart size={20} className="text-slate-600 hover:text-purple-600 transition" />
             {cartCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-[10px] font-bold text-white">
-                {cartCount}
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
+            {cartMessage && (
+              <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
               </span>
             )}
           </button>
@@ -627,25 +625,58 @@ export default function CategoriesPage() {
 
         {/* Product grid */}
         <div className="space-y-6">
+          {/* Search results info */}
+          {searchTerm && (
+            <div className="rounded-xl bg-white p-4 shadow-sm border border-slate-200">
+              <p className="text-sm text-slate-600">
+                Showing results for: <span className="font-semibold text-purple-600">"{searchTerm}"</span>
+                {filteredProducts.length === 0 ? " - No products found" : ` (${filteredProducts.length} products)`}
+              </p>
+            </div>
+          )}
+
           {filteredProducts.length === 0 ? (
             <div className="flex min-h-[400px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
               <Package size={52} className="text-purple-500" />
               <h2 className="mt-5 text-2xl font-black text-slate-900">No products found</h2>
               <p className="mt-2 max-w-md text-slate-500">
-                Products posted by the admin under {activeCategory} will appear here automatically.
+                {searchTerm 
+                  ? `No products matching "${searchTerm}" in ${activeCategory}. Try a different search term.`
+                  : `Products posted by the admin under ${activeCategory} will appear here automatically.`
+                }
               </p>
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl font-black text-slate-950">{activeCategory}</h2>
-                <button className="flex items-center gap-1 text-sm font-black text-purple-600">
-                  See All <ChevronRight size={16} />
-                </button>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-950">{activeCategory}</h2>
+                  {searchTerm && (
+                    <p className="text-sm text-slate-500 mt-1">
+                      {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''} found
+                    </p>
+                  )}
+                </div>
+                {filteredProducts.length > INITIAL_DISPLAY_COUNT && !showAllProducts && (
+                  <button
+                    onClick={handleSeeAll}
+                    className="flex items-center gap-1 text-sm font-black text-purple-600 hover:text-purple-700 transition"
+                  >
+                    See All ({filteredProducts.length}) <ChevronRight size={16} />
+                  </button>
+                )}
+                {showAllProducts && filteredProducts.length > INITIAL_DISPLAY_COUNT && (
+                  <button
+                    onClick={handleShowLess}
+                    className="flex items-center gap-1 text-sm font-black text-purple-600 hover:text-purple-700 transition"
+                  >
+                    Show Less <ChevronDown size={16} />
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
-                {filteredProducts.map((product) => {
+                {displayedProducts.map((product) => {
                   const avgRating = getAverageRating(product.id);
                   const isInWishlist = wishlistIds.has(product.id);
                   
@@ -657,7 +688,7 @@ export default function CategoriesPage() {
                       }`}
                       onClick={() => !isOutOfStock(product) && openModal(product)}
                     >
-                      {/* Heart button */}
+                      {/* Heart button with unlike functionality */}
                       <button
                         onClick={(e) => addToWishlist(product, e)}
                         disabled={loadingWishlist}
@@ -672,17 +703,6 @@ export default function CategoriesPage() {
                           }
                         />
                       </button>
-
-                      {/* Quick Add Button */}
-                      {!isOutOfStock(product) && (
-                        <button
-                          onClick={(e) => quickAddToCart(product, e)}
-                          className="absolute bottom-2 left-2 right-2 z-10 bg-purple-600 text-white text-xs font-semibold py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-1"
-                        >
-                          <ShoppingCart size={12} />
-                          Quick Add
-                        </button>
-                      )}
 
                       <div className="overflow-hidden rounded-xl bg-slate-50 p-3">
                         <img
@@ -715,6 +735,19 @@ export default function CategoriesPage() {
                   );
                 })}
               </div>
+
+              {/* Show "See All" button at bottom when not showing all */}
+              {filteredProducts.length > INITIAL_DISPLAY_COUNT && !showAllProducts && (
+                <div className="mt-8 flex justify-center">
+                  <button
+                    onClick={handleSeeAll}
+                    className="flex items-center gap-2 rounded-xl border border-purple-200 bg-white px-6 py-3 text-sm font-semibold text-purple-600 transition hover:bg-purple-50 hover:border-purple-300"
+                  >
+                    View All {filteredProducts.length} Products
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -759,6 +792,9 @@ export default function CategoriesPage() {
                       KSh {selectedProduct.oldPrice?.toLocaleString()}
                     </p>
                   )}
+                  <p className="text-sm text-slate-500 mt-1">
+                    Delivery Fee: KSh {DELIVERY_FEE}
+                  </p>
                 </div>
                 {productReviews.length > 0 && (
                   <div className="mt-3 flex items-center gap-2">

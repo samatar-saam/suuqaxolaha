@@ -163,21 +163,37 @@ export const reportApi = {
   delete: (id) => api.delete(`/reports/${id}`),
 };
 
-// Cart API (if using backend cart, otherwise localStorage)
+// Cart API - FIXED to use 'cart_items' endpoint
 export const cartApi = {
-  getCart: (userId) => api.get(`/cart?userId=${userId}`),
-  addItem: (data) => api.post('/cart', data),
-  updateItem: (id, data) => api.patch(`/cart/${id}`, data),
-  removeItem: (id) => api.delete(`/cart/${id}`),
-  clearCart: (userId) => api.delete(`/cart?userId=${userId}`),
+  getCart: (userId) => api.get(`/cart_items?userId=${userId}`),
+  addItem: (data) => api.post('/cart_items', data),
+  updateItem: (id, data) => api.patch(`/cart_items/${id}`, data),
+  removeItem: (id) => api.delete(`/cart_items/${id}`),
+  clearCart: (userId) => {
+    // Get all cart items for user and delete them
+    return api.get(`/cart_items?userId=${userId}`).then(response => {
+      const deletePromises = response.data.map(item => 
+        api.delete(`/cart_items/${item.id}`)
+      );
+      return Promise.all(deletePromises);
+    });
+  },
 };
 
-// Wishlist API
+// Wishlist API - FIXED to use 'wishlists' endpoint
 export const wishlistApi = {
-  getWishlist: (userId) => api.get(`/wishlist?userId=${userId}`),
-  addItem: (data) => api.post('/wishlist', data),
-  removeItem: (id) => api.delete(`/wishlist/${id}`),
-  clearWishlist: (userId) => api.delete(`/wishlist?userId=${userId}`),
+  getWishlist: (userId) => api.get(`/wishlists?userId=${userId}`),
+  addItem: (data) => api.post('/wishlists', data),
+  removeItem: (id) => api.delete(`/wishlists/${id}`),
+  clearWishlist: (userId) => {
+    // Get all wishlist items for user and delete them
+    return api.get(`/wishlists?userId=${userId}`).then(response => {
+      const deletePromises = response.data.map(item => 
+        api.delete(`/wishlists/${item.id}`)
+      );
+      return Promise.all(deletePromises);
+    });
+  },
 };
 
 // Dashboard Stats API

@@ -34,6 +34,9 @@ export default function NewArrivals() {
   const [addingToCart, setAddingToCart] = useState({});
   const [cartMessage, setCartMessage] = useState(null);
 
+  // Fixed delivery fee
+  const DELIVERY_FEE = 150;
+
   useEffect(() => {
     fetchProducts();
     fetchCategories();
@@ -133,6 +136,7 @@ export default function NewArrivals() {
           image: product.image,
           category: product.category,
           quantity: 1,
+          deliveryFee: DELIVERY_FEE,
         },
       ];
     }
@@ -240,7 +244,7 @@ export default function NewArrivals() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white flex items-center justify-center pt-24">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="mt-4 text-slate-600">Loading new arrivals...</p>
@@ -250,7 +254,7 @@ export default function NewArrivals() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-5">
         {/* Toast Message */}
         {cartMessage && (
@@ -546,13 +550,13 @@ export default function NewArrivals() {
           </div>
         )}
 
-        {/* Features Banner */}
+        {/* Features Banner - Updated with flat delivery fee */}
         <div className="mt-12 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-8 border border-purple-100">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div className="flex flex-col items-center gap-2">
               <Truck size={32} className="text-purple-600" />
-              <h3 className="font-bold text-slate-900">Free Delivery</h3>
-              <p className="text-sm text-slate-500">On orders over KSh 2,500</p>
+              <h3 className="font-bold text-slate-900">Flat Delivery Fee</h3>
+              <p className="text-sm text-slate-500">Only KSh {DELIVERY_FEE} on all orders</p>
             </div>
             <div className="flex flex-col items-center gap-2">
               <Shield size={32} className="text-purple-600" />
